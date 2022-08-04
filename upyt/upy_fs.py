@@ -7,8 +7,6 @@ from typing import Iterable, Iterator, Optional, Callable
 
 import os
 
-from serial import Serial
-
 from contextlib import contextmanager
 
 from textwrap import dedent
@@ -24,11 +22,13 @@ from upyt.upy_repl import (
     raw_paste_exec,
 )
 
+from upyt.connection import Connection
+
 
 @contextmanager
-def upy_filesystem(ser: Serial) -> "FilesystemAPI":
-    with raw_mode(ser):
-        yield FilesystemAPI(ser)
+def upy_filesystem(conn: Connection) -> "FilesystemAPI":
+    with raw_mode(conn):
+        yield FilesystemAPI(conn)
 
 
 def traceback_to_oserror(traceback: str) -> None:
@@ -308,7 +308,7 @@ class FilesystemAPI:
         # Recursively delete
         #
         # Note that this process can take a surprisingly long time for large
-        # hierarchies. As such, to avoid the serial connection timing out, this
+        # hierarchies. As such, to avoid the connection timing out, this
         # function will raise a timeout error 
         "remove_recursive": (
             """
@@ -351,7 +351,7 @@ class FilesystemAPI:
         # exhausted.
         #
         # The utility of this is in printing out (possibly long) sequences of
-        # of (relatively short) strings without a serial read timing out due to
+        # of (relatively short) strings without a read timing out due to
         # the sheer time spent printing things.
         "pns": (
             """
@@ -428,8 +428,8 @@ class FilesystemAPI:
         ),
     }
     
-    def __init__(self, ser: Serial) -> None:
-        self._ser = ser
+    def __init__(self, conn: Connection) -> None:
+        self._conn = conn
         self._defined = set()
     
     def _ensure_defined(self, name: str) -> None:
@@ -447,7 +447,7 @@ class FilesystemAPI:
             
             # Load definition
             assert raw_paste_exec(
-                self._ser,
+                self._conn,
                 dedent(definition).strip(),
             ) == ("", "")
     
@@ -460,7 +460,7 @@ class FilesystemAPI:
         path = path.rstrip("/")
         self._ensure_defined("mkdir")
         out, err = raw_paste_exec(
-            self._ser, f"mkdir({path!r}, {parents}, {exist_ok})"
+            self._conn, f"mkdir({path!r}, {parents}, {exist_ok})"
         )
         traceback_to_oserror(err)
         assert err == "", err
@@ -473,15 +473,15 @@ class FilesystemAPI:
         self._ensure_defined("remove_recursive")
         
         # NB: To avoid issues with remove_recursive taking so long that the
-        # serial port times out, the remove_recursive process will timeout
+        # connection times out, the remove_recursive process will timeout
         # after a given number of ms by throwing an Exception. As such, all we
         # need to do is continue re-running the command until we nolonger get
         # that exception.
         timeout_ms = 1000
-        if self._ser.timeout is not None:
-            timeout_ms = int(self._ser.timeout * 500)
+        if self._conn.timeout is not None:
+            timeout_ms = int(self._conn.timeout * 500)
         while True:
-            out, err = raw_paste_exec(self._ser, f"remove_recursive({path!r}, {timeout_ms})")
+            out, err = raw_paste_exec(self._conn, f"remove_recursive({path!r}, {timeout_ms})")
             if err.endswith("\r\nException: Timeout\r\n"):
                 continue
             traceback_to_oserror(err)
@@ -500,7 +500,7 @@ class FilesystemAPI:
         # function to print a few entries at a time.
         
         self._ensure_defined("ls")
-        out, err = raw_paste_exec(self._ser, f"d, f = map(iter, ls({path!r}))")
+        out, err = raw_paste_exec(self._conn, f"d, f = map(iter, ls({path!r}))")
         traceback_to_oserror(err)
         assert err == "", err
         assert out == "", out
@@ -510,7 +510,7 @@ class FilesystemAPI:
         files = []
         for lst, name in [(directories, "d"), (files, "f")]:
             while True:
-                out, err = raw_paste_exec(self._ser, f"pns({name}, {block_size})")
+                out, err = raw_paste_exec(self._conn, f"pns({name}, {block_size})")
                 assert err == "", err
                 to_add = eval(out)
                 if to_add:
@@ -525,7 +525,7 @@ class FilesystemAPI:
         Rename/move a file.
         """
         self._ensure_defined("os")
-        out, err = raw_paste_exec(self._ser, f"os.rename({old_path!r}, {new_path!r})")
+        out, err = raw_paste_exec(self._conn, f"os.rename({old_path!r}, {new_path!r})")
         traceback_to_oserror(err)
         assert out == "", out
         assert err == "", err
@@ -549,7 +549,7 @@ class FilesystemAPI:
             for alias, member in aliases.items()
         )
         out, err = raw_paste_exec(
-            self._ser,
+            self._conn,
             f"{file_object_name} = open({path!r}, {mode!r});{defs}",
         )
         traceback_to_oserror(err)
@@ -560,7 +560,7 @@ class FilesystemAPI:
         """
         Close the file ``file_object_name``.
         """
-        out, err = raw_paste_exec(self._ser, f"{file_object_name}.close()")
+        out, err = raw_paste_exec(self._conn, f"{file_object_name}.close()")
         traceback_to_oserror(err)
         assert err == "", err
         assert out == "", out
@@ -582,7 +582,7 @@ class FilesystemAPI:
         
         self._ensure_defined("uh")  # = unhexlify
         for write_block, _ in data_to_writes(content, block_size):
-            assert raw_paste_exec(self._ser, write_block) == ("", "")
+            assert raw_paste_exec(self._conn, write_block) == ("", "")
         
         self._close_file()
 
@@ -602,7 +602,7 @@ class FilesystemAPI:
         
         data = b""
         while True:
-            out, err = raw_paste_exec(self._ser, f"pnb(f, {block_size})")
+            out, err = raw_paste_exec(self._conn, f"pnb(f, {block_size})")
             assert err == "", err
             block = eval(out, {"uh": unhexlify})
             data += block
@@ -620,7 +620,7 @@ class FilesystemAPI:
         Otherwise, does nothing.
         """
         self._ensure_defined("os")
-        out, err = raw_paste_exec(self._ser, "if hasattr(os, 'sync'): os.sync()")
+        out, err = raw_paste_exec(self._conn, "if hasattr(os, 'sync'): os.sync()")
         assert out == "", out
         assert err == "", err
     
@@ -655,7 +655,7 @@ class FilesystemAPI:
         
         # We will construct the patch in a separate (temporary) file
         self._ensure_defined("get_temp_file_name")
-        temp_path, err = raw_paste_exec(self._ser, f"get_temp_file_name({path!r})")
+        temp_path, err = raw_paste_exec(self._conn, f"get_temp_file_name({path!r})")
         assert err == "", err
         self._open_file(temp_path, "wb", {"w": "write"}, "fo")
         
@@ -670,7 +670,7 @@ class FilesystemAPI:
             self._ensure_defined("sha256")
             self._ensure_defined("make_read_and_hash")
             out, err = raw_paste_exec(
-                self._ser,
+                self._conn,
                 "hash = sha256(); r = make_read_and_hash(r, hash)",
             )
             assert out == "", out
@@ -690,7 +690,7 @@ class FilesystemAPI:
             bytes_per_batch=block_size,
             commands_per_batch=block_transaction_limit,
         ):
-            out, err = raw_paste_exec(self._ser, commands)
+            out, err = raw_paste_exec(self._conn, commands)
             assert out == "", commands + "\n---\n" + out
             assert err == "", commands + "\n---\n" + err
         
@@ -700,7 +700,7 @@ class FilesystemAPI:
         # Check integrity
         if safe:
             self._ensure_defined("h")
-            out, err = raw_paste_exec(self._ser, "print(hash.digest())")
+            out, err = raw_paste_exec(self._conn, "print(hash.digest())")
             assert err == "", err
             actual_read_hash = eval(out)
             

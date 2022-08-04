@@ -1,6 +1,6 @@
 import pytest
 
-from serial import Serial
+from upyt.connection import SerialConnection
 
 
 def pytest_addoption(parser):
@@ -20,5 +20,5 @@ def board(request):
 
 @pytest.fixture(scope='session')
 def ser(board):
-    with Serial(board, timeout=1) as ser:
+    with SerialConnection(board, timeout=1) as ser:
         yield ser

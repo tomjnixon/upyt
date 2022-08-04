@@ -4,18 +4,18 @@ Low-level utilities which interact with the MicroPython REPL.
 
 import random
 
-from serial import Serial
-
 from contextlib import contextmanager
 
 import struct
+
+from upyt.connection import Connection
 
 
 class MicroPythonReplError(Exception):
     """
     Base exception thrown when the MicroPython REPL produces unexpected output.
     
-    All exceptions include any unexpected output from the serial port as their
+    All exceptions include any unexpected output from the connection as their
     first argument.
     """
 
@@ -42,33 +42,33 @@ class SomeCodeNotSentError(MicroPythonReplError):
     """
 
 
-def expect(ser: Serial, value: bytes) -> bytes:
+def expect(conn: Connection, value: bytes) -> bytes:
     """
-    Read from a serial port, checking that exactly the expected value is read.
+    Read from a connection, checking that exactly the expected value is read.
     If a timeout occurs, raises MicroPythonReplError.
     
     Returns the bytes actually read.
     """
-    actual = ser.read(len(value))
+    actual = conn.read(len(value))
     if actual != value:
         raise MicroPythonReplError(actual)
     return actual
 
 
-def expect_endswith(ser: Serial, value: bytes) -> bytes:
+def expect_endswith(conn: Connection, value: bytes) -> bytes:
     """
-    Read from a serial port until the supplied value is read. If a timeout
+    Read from a connection until the supplied value is read. If a timeout
     occurs before this, raises MicroPythonReplError.
     
     Returns all of the bytes read.
     """
-    actual = ser.read_until(value)
+    actual = conn.read_until(value)
     if not actual.endswith(value):
         raise MicroPythonReplError(actual)
     return actual
 
 
-def interrupt_and_enter_repl(ser: Serial, num_attempts: int = 2, timeout: float = 0.1) -> bytes:
+def interrupt_and_enter_repl(conn: Connection, num_attempts: int = 2, timeout: float = 0.1) -> bytes:
     """
     Attempt to perform a keyboard interrupt to get to a REPL.
     
@@ -82,21 +82,17 @@ def interrupt_and_enter_repl(ser: Serial, num_attempts: int = 2, timeout: float 
     for example, an exception handler also blocks.
     """
     # Flush any pending input (e.g. previous command outputs or prompts)
-    unmatched_output = b""
-    if ser.in_waiting:
-        unmatched_output += ser.read(ser.in_waiting)
+    unmatched_output = conn.read_buffered()
     
     # Attempt to reach a prompt follwing a keyboard interrupt
-    old_timeout = ser.timeout
-    ser.timeout = timeout
-    try:
+    with conn.timeout_override(timeout):
         for attempt in range(num_attempts):
-            ser.write(b"\x03")
+            conn.write(b"\x03")
             
             # Wait for the first hint hint of a prompt
             prompt = b"\r\n>>> "
             try:
-                unmatched_output += expect_endswith(ser, prompt)[:-len(prompt)]
+                unmatched_output += expect_endswith(conn, prompt)[:-len(prompt)]
             except MicroPythonReplError as e:
                 # No sign of a prompt, try interrupting again as the exception
                 # handler may need interrupting
@@ -106,7 +102,7 @@ def interrupt_and_enter_repl(ser: Serial, num_attempts: int = 2, timeout: float 
             # To make sure what we're seeing is not just an old prompt hanging
             # about in the buffer, produce some unique output
             random_number = random.randint(0x10, 0xFFFFFF)
-            ser.write(b"0x%x\r" % random_number)
+            conn.write(b"0x%x\r" % random_number)
             expected_response = (
                 b"0x%x\r\n"  # Echo
                 b"%d\r\n" # Decimal representation
@@ -114,7 +110,7 @@ def interrupt_and_enter_repl(ser: Serial, num_attempts: int = 2, timeout: float 
             ) % (random_number, random_number)
             try:
                 unmatched_output += expect_endswith(
-                    ser, expected_response
+                    conn, expected_response
                 )[:-len(expected_response)]
                 # Success! We're in sync and sat waiting at a prompt!
                 return unmatched_output
@@ -125,31 +121,29 @@ def interrupt_and_enter_repl(ser: Serial, num_attempts: int = 2, timeout: float 
         
         # Ran out of retries
         raise NoReplError(unmatched_output)
-    finally:
-        ser.timeout = old_timeout
 
 
 @contextmanager
-def raw_mode(ser: Serial):
+def raw_mode(conn: Connection):
     """
     Context manager which enters raw mode on entry and leaves raw mode again on
     exit.
     """
     # Enter raw mode
-    ser.write(b"\x01")  # (Ctrl+A)
-    expect_endswith(ser, b"raw REPL; CTRL-B to exit\r\n>")
+    conn.write(b"\x01")  # (Ctrl+A)
+    expect_endswith(conn, b"raw REPL; CTRL-B to exit\r\n>")
     
     try:
         yield
     finally:
-        ser.write(
+        conn.write(
             b"\x04"  # (Ctrl+D)  End current code block (if any)
             b"\x02"  # (Ctrl+B)  Exit raw mode
         )
-        expect_endswith(ser, b"\r\n>>> ")
+        expect_endswith(conn, b"\r\n>>> ")
 
 
-def raw_paste_exec(ser: Serial, code: str) -> tuple[str, str]:
+def raw_paste_exec(conn: Connection, code: str) -> tuple[str, str]:
     """
     Execute the supplied code (via raw paste mode).
     
@@ -166,19 +160,19 @@ def raw_paste_exec(ser: Serial, code: str) -> tuple[str, str]:
     produced.
     
     The executed command must complete and have sent all of its output within
-    the serial port's timeout, otherwise an error will occur.
+    the connection's timeout, otherwise an error will occur.
     """
     # Enter raw paste mode
-    ser.write(
+    conn.write(
         b"\x05"  # (Ctrl+E / ENQ)
         b"A"
         b"\x01"  # (Ctrl+A)
     )  # (Ctrl+A)
-    response = ser.read(2)
+    response = conn.read(2)
     if response != b"R\x01":
         raise RawPasteModeNotSupportedError(response)
     
-    window_size_increment = struct.unpack("<H", ser.read(2))[0]
+    window_size_increment = struct.unpack("<H", conn.read(2))[0]
     window_size = window_size_increment
   
     code_utf8 = code.encode("utf-8")
@@ -192,7 +186,7 @@ def raw_paste_exec(ser: Serial, code: str) -> tuple[str, str]:
     # block of code, otherwise the end-of-code might overrun the buffer!
     while code_utf8 or window_size == 0:
         if window_size == 0:
-            response = ser.read(1)
+            response = conn.read(1)
             if response == b"\x01":
                 window_size += window_size_increment
             elif response == b"\x04":
@@ -202,14 +196,14 @@ def raw_paste_exec(ser: Serial, code: str) -> tuple[str, str]:
                 raise MicroPythonReplError(response)
         
         # Send (up-to) the maxmimum allowed window worth of data
-        written = ser.write(code_utf8[:window_size])
+        written = conn.write(code_utf8[:window_size])
         code_utf8 = code_utf8[written:]
         window_size -= written
     
     # End transmission
-    ser.write(b"\x04")  # (Ctrl+D)
+    conn.write(b"\x04")  # (Ctrl+D)
     while True:
-        response = ser.read(1)
+        response = conn.read(1)
         if response == b"\x01":
             # A window size increment, but we don't care about those anymore
             continue
@@ -220,9 +214,9 @@ def raw_paste_exec(ser: Serial, code: str) -> tuple[str, str]:
             raise MicroPythonReplError(response)
     
     # Read the response
-    code_output = expect_endswith(ser, b"\x04")[:-1]
-    exception_output = expect_endswith(ser, b"\x04")[:-1]
-    expect_endswith(ser, b">")  # Should return to raw-repl shell
+    code_output = expect_endswith(conn, b"\x04")[:-1]
+    exception_output = expect_endswith(conn, b"\x04")[:-1]
+    expect_endswith(conn, b">")  # Should return to raw-repl shell
     
     if not code_utf8:
         # Success: All bytes were accepted!
@@ -232,7 +226,7 @@ def raw_paste_exec(ser: Serial, code: str) -> tuple[str, str]:
         raise SomeCodeNotSentError(exception_output, code_output, code_utf8)
 
 
-def soft_reset_directly_into_repl(ser: Serial) -> str:
+def soft_reset_directly_into_repl(conn: Connection) -> str:
     """
     Interupt any running process and perform a soft reset such that the device
     boots directly into the REPL without executing main.py.
@@ -240,16 +234,16 @@ def soft_reset_directly_into_repl(ser: Serial) -> str:
     Returns any output produced by boot.py as a string. Output prior to this is
     discarded.
     """
-    interrupt_and_enter_repl(ser)
+    interrupt_and_enter_repl(conn)
     
     # NB: When reset in raw mode, main.py is not executed
-    with raw_mode(ser):
+    with raw_mode(conn):
         # Perform a reset
-        ser.write(b"\x04")  # (Ctrl + D)
+        conn.write(b"\x04")  # (Ctrl + D)
         
         # Response from Raw REPL
         expect(
-            ser,
+            conn,
             (
                 b"OK\r\n"  # From Raw REPL
                 b"MPY: soft reboot\r\n"  # Boot message
@@ -259,7 +253,7 @@ def soft_reset_directly_into_repl(ser: Serial) -> str:
         # Ignore all output from boot.py
         raw_repl_entry_message = b"raw REPL; CTRL-B to exit\r\n>"
         boot_py_output = expect_endswith(
-            ser, raw_repl_entry_message
+            conn, raw_repl_entry_message
         )[:-len(raw_repl_entry_message)]
     
     return boot_py_output.decode("utf-8")
