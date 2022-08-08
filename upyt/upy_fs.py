@@ -565,12 +565,11 @@ class FilesystemAPI:
         assert err == "", err
         assert out == "", out
     
-    def write_file_raw(
+    def write_file(
         self, path: str, content: bytes, block_size: int = 512
     ) -> None:
         """
-        Write a file in the most simplistic possible way: by just copying the
-        whole file over, block_size bytes at a time.
+        Write a file, block_size bytes at a time.
         
         Internally attempts to write the file using whichever mode is most
         efficient: Python bytes literals or hex strings. For mainly text-based
@@ -586,14 +585,13 @@ class FilesystemAPI:
         
         self._close_file()
 
-    def read_file_raw(
+    def read_file(
         self, path: str, block_size: int = 512
     ) -> bytes:
         """
-        Read a file in the most simplistic way possible: by just copying the
-        whole file, block_size bytes at a time.
+        Read a file block_size bytes at a time.
         
-        See :py:meth:`write_file_raw` for the analgous process and a
+        See :py:meth:`write_file` for the analgous process and a
         description of how this is done
         """
         self._open_file(path, "rb")

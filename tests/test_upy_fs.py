@@ -438,34 +438,34 @@ class TestPrimitives:
             dirs, files = fs.ls("/")
             assert tmpdir[1:] not in dirs
     
-    def test_read_and_write_file_raw(self, ser) -> None:
+    def test_read_and_write_file(self, ser) -> None:
         with upy_filesystem(ser) as fs:
             tmpdir = f"/d{random.randint(0, 10000)}"
             fs.mkdir(tmpdir)
             
             # Bytes literal mode
-            fs.write_file_raw(f"{tmpdir}/foo", b"Hello, world!\n")
-            assert fs.read_file_raw(f"{tmpdir}/foo") == b"Hello, world!\n"
+            fs.write_file(f"{tmpdir}/foo", b"Hello, world!\n")
+            assert fs.read_file(f"{tmpdir}/foo") == b"Hello, world!\n"
             
             # Hex mode
-            fs.write_file_raw(f"{tmpdir}/foo", b"\xFF" * 10)
-            assert fs.read_file_raw(f"{tmpdir}/foo") == b"\xFF" * 10
+            fs.write_file(f"{tmpdir}/foo", b"\xFF" * 10)
+            assert fs.read_file(f"{tmpdir}/foo") == b"\xFF" * 10
             
             # Chop into blocks (multiple of size)
-            fs.write_file_raw(f"{tmpdir}/foo", b"Hello, world!\n", block_size=2)
-            assert fs.read_file_raw(f"{tmpdir}/foo", block_size=2) == b"Hello, world!\n"
+            fs.write_file(f"{tmpdir}/foo", b"Hello, world!\n", block_size=2)
+            assert fs.read_file(f"{tmpdir}/foo", block_size=2) == b"Hello, world!\n"
             
             # Chop into blocks (not a multiple of size)
-            fs.write_file_raw(f"{tmpdir}/foo", b"Hello, world!\n", block_size=3)
-            assert fs.read_file_raw(f"{tmpdir}/foo", block_size=3) == b"Hello, world!\n"
+            fs.write_file(f"{tmpdir}/foo", b"Hello, world!\n", block_size=3)
+            assert fs.read_file(f"{tmpdir}/foo", block_size=3) == b"Hello, world!\n"
             
             # Run on something large with default block size
-            fs.write_file_raw(f"{tmpdir}/foo", b"X"*1024*4)
-            assert fs.read_file_raw(f"{tmpdir}/foo") == b"X"*1024*4
+            fs.write_file(f"{tmpdir}/foo", b"X"*1024*4)
+            assert fs.read_file(f"{tmpdir}/foo") == b"X"*1024*4
             
             # Run on something large in hex mode with default block size
-            fs.write_file_raw(f"{tmpdir}/foo", b"\xFF"*1024*2)
-            assert fs.read_file_raw(f"{tmpdir}/foo") == b"\xFF"*1024*2
+            fs.write_file(f"{tmpdir}/foo", b"\xFF"*1024*2)
+            assert fs.read_file(f"{tmpdir}/foo") == b"\xFF"*1024*2
             
             fs.remove_recursive(tmpdir)
             
@@ -478,11 +478,11 @@ class TestPrimitives:
             tmpdir = f"/d{random.randint(0, 10000)}"
             fs.mkdir(tmpdir)
             
-            fs.write_file_raw(f"{tmpdir}/foo", b"Hello, world!\n")
+            fs.write_file(f"{tmpdir}/foo", b"Hello, world!\n")
             
             fs.rename(f"{tmpdir}/foo", f"{tmpdir}/bar")
             assert fs.ls(tmpdir)[1] == ["bar"]
-            assert fs.read_file_raw(f"{tmpdir}/bar") == b"Hello, world!\n"
+            assert fs.read_file(f"{tmpdir}/bar") == b"Hello, world!\n"
             
             fs.remove_recursive(tmpdir)
             
@@ -495,14 +495,14 @@ class TestPrimitives:
             tmpdir = f"/d{random.randint(0, 10000)}"
             fs.mkdir(tmpdir)
             fs.mkdir(f"{tmpdir}/foo")
-            fs.write_file_raw(f"{tmpdir}/foo/a", b"I'm a")
-            fs.write_file_raw(f"{tmpdir}/foo/b", b"I'm b")
+            fs.write_file(f"{tmpdir}/foo/a", b"I'm a")
+            fs.write_file(f"{tmpdir}/foo/b", b"I'm b")
             
             fs.rename(f"{tmpdir}/foo", f"{tmpdir}/bar")
             assert fs.ls(tmpdir)[0] == ["bar"]
             assert set(fs.ls(f"{tmpdir}/bar")[1]) == {"a", "b"}
-            assert fs.read_file_raw(f"{tmpdir}/bar/a") == b"I'm a"
-            assert fs.read_file_raw(f"{tmpdir}/bar/b") == b"I'm b"
+            assert fs.read_file(f"{tmpdir}/bar/a") == b"I'm a"
+            assert fs.read_file(f"{tmpdir}/bar/b") == b"I'm b"
             
             fs.remove_recursive(tmpdir)
             
@@ -529,7 +529,7 @@ class TestPrimitives:
             tmpdir = f"/d{random.randint(0, 10000)}"
             fs.mkdir(tmpdir)
             
-            fs.write_file_raw(f"{tmpdir}/foo", b"Hello, world!\n")
+            fs.write_file(f"{tmpdir}/foo", b"Hello, world!\n")
             
             with pytest.raises(OSError):
                 fs.rename(f"{tmpdir}/foo", f"{tmpdir}/bar/baz")
@@ -553,7 +553,7 @@ class TestPrimitives:
             for dir in exp_dirs:
                 fs.mkdir(f"{tmpdir}/{dir}")
             for file in exp_files:
-                fs.write_file_raw(f"{tmpdir}/{file}", b"")
+                fs.write_file(f"{tmpdir}/{file}", b"")
             
             dirs, files = fs.ls(tmpdir)
             
@@ -579,9 +579,9 @@ class TestPrimitives:
             
             old_content = b"Hello there!"
             new_content = b"Hello, world!"
-            fs.write_file_raw(f"{tmpdir}/foo", old_content)
+            fs.write_file(f"{tmpdir}/foo", old_content)
             fs.update_file(f"{tmpdir}/foo", old_content, new_content)
-            assert fs.read_file_raw(f"{tmpdir}/foo") == new_content
+            assert fs.read_file(f"{tmpdir}/foo") == new_content
             
             fs.remove_recursive(tmpdir)
             
@@ -596,9 +596,9 @@ class TestPrimitives:
             
             old_content = b"\xFF"
             new_content = b"\xFF" * 4 * 1024
-            fs.write_file_raw(f"{tmpdir}/foo", old_content)
+            fs.write_file(f"{tmpdir}/foo", old_content)
             fs.update_file(f"{tmpdir}/foo", old_content, new_content)
-            assert fs.read_file_raw(f"{tmpdir}/foo") == new_content
+            assert fs.read_file(f"{tmpdir}/foo") == new_content
             
             fs.remove_recursive(tmpdir)
             
@@ -616,9 +616,9 @@ class TestPrimitives:
                 bytes([c]) if (i % 2) else b"\00"
                 for i, c in enumerate(old_content)
             )
-            fs.write_file_raw(f"{tmpdir}/foo", old_content)
+            fs.write_file(f"{tmpdir}/foo", old_content)
             fs.update_file(f"{tmpdir}/foo", old_content, new_content)
-            assert fs.read_file_raw(f"{tmpdir}/foo") == new_content
+            assert fs.read_file(f"{tmpdir}/foo") == new_content
             
             fs.remove_recursive(tmpdir)
             
@@ -631,7 +631,7 @@ class TestPrimitives:
             tmpdir = f"/d{random.randint(0, 10000)}"
             fs.mkdir(tmpdir)
             
-            fs.write_file_raw(f"{tmpdir}/foo", b"HELLO?")
+            fs.write_file(f"{tmpdir}/foo", b"HELLO?")
             # Should get a mangled file but shouldn't crash when safe-mode
             # disabled.
             fs.update_file(
@@ -640,7 +640,7 @@ class TestPrimitives:
                 b"Hello there how are we?!",
                 safe=False,
             )
-            assert fs.read_file_raw(f"{tmpdir}/foo") != b"HELLO?"
+            assert fs.read_file(f"{tmpdir}/foo") != b"HELLO?"
             
             fs.remove_recursive(tmpdir)
             
@@ -653,7 +653,7 @@ class TestPrimitives:
             tmpdir = f"/d{random.randint(0, 10000)}"
             fs.mkdir(tmpdir)
             
-            fs.write_file_raw(f"{tmpdir}/foo", b"NOPE!")
+            fs.write_file(f"{tmpdir}/foo", b"NOPE!")
             with pytest.raises(UpdateError):
                 fs.update_file(
                     f"{tmpdir}/foo",
@@ -663,7 +663,7 @@ class TestPrimitives:
                 )
             
             # Shouldn't have changed the file on failure
-            assert fs.read_file_raw(f"{tmpdir}/foo") == b"NOPE!"
+            assert fs.read_file(f"{tmpdir}/foo") == b"NOPE!"
             
             # Shouldn't have left any temporary files behind
             assert fs.ls(tmpdir) == ([], ["foo"])
