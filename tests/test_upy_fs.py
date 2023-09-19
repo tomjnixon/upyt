@@ -14,6 +14,7 @@ from upyt.upy_fs import (
     batch_commands,
     UpdateError,
     FilesystemAPI,
+    PathType,
 )
 
 
@@ -571,6 +572,21 @@ class TestPrimitives:
         with upy_filesystem(ser) as fs:
             # Pretty much all we can do is check this doesn't crash...
             fs.sync()
+    
+    def test_get_type(self, ser) -> None:
+        with upy_filesystem(ser) as fs:
+            tmpdir = f"/d{random.randint(0, 10000)}"
+            fs.mkdir(tmpdir)
+            
+            fs.write_file(f"{tmpdir}/a_file", b"hello")
+            fs.mkdir(f"{tmpdir}/a_dir")
+            
+            assert fs.get_type(f"{tmpdir}/a_file") == PathType.file
+            assert fs.get_type(f"{tmpdir}/a_dir") == PathType.dir
+            with pytest.raises(OSError):
+                fs.get_type(f"{tmpdir}/absent")
+            
+            fs.remove_recursive(tmpdir)
     
     def test_update_file_basic_case(self, ser) -> None:
         with upy_filesystem(ser) as fs:

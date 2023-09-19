@@ -5,6 +5,8 @@ on a MicroPython device via its repl.
 
 from typing import Iterable, Iterator, Optional, Callable
 
+from enum import Enum
+
 import os
 
 from contextlib import contextmanager
@@ -23,6 +25,7 @@ from upyt.upy_repl import (
 )
 
 from upyt.connection import Connection
+
 
 
 @contextmanager
@@ -275,6 +278,18 @@ class UpdateError(Exception):
     """
 
 
+class PathType(Enum):
+    """Enumerates the types a path can have."""
+    file = "file"
+    dir = "dir"
+    
+    def is_file(self) -> bool:
+        return self == PathType.file
+    
+    def is_dir(self) -> bool:
+        return self == PathType.dir
+
+
 class FilesystemAPI:
     
     # Snippets which may be executed to define/import a useful function/module.
@@ -450,6 +465,24 @@ class FilesystemAPI:
                 self._conn,
                 dedent(definition).strip(),
             ) == ("", "")
+    
+    def get_type(self, path: str) -> PathType:
+        """
+        Determine of a path is a directory or a file. Raises an OSError if the
+        path does not exist.
+        """
+        self._ensure_defined("os")
+        out, err = raw_paste_exec(
+            self._conn, f"print(os.stat({path!r})[0])"
+        )
+        traceback_to_oserror(err)
+        assert err == "", err
+        
+        mode = int(out)
+        if mode & 0x4000:
+            return PathType.dir
+        else:
+            return PathType.file
     
     def mkdir(
         self, path: str, parents: bool = False, exist_ok: bool = False,
