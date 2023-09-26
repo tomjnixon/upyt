@@ -24,6 +24,11 @@ class NoReplError(MicroPythonReplError):
     Thrown when no REPL prompt (>>>) is received when expected.
     """
 
+class CouldntEnterRawPasteModeError(MicroPythonReplError):
+    """
+    Thrown if :py:func:`paste_exec` is unable to enter paste mode.
+    """
+
 class RawPasteModeNotSupportedError(MicroPythonReplError):
     """
     Thrown if the connected board is running a MicroPython version too old to
@@ -121,6 +126,48 @@ def interrupt_and_enter_repl(conn: Connection, num_attempts: int = 2, timeout: f
         
         # Ran out of retries
         raise NoReplError(unmatched_output)
+
+
+def paste_exec(conn: Connection, code: str, batch_size: int = 32) -> None:
+    """
+    (Attempt to) use paste-mode to execute a block of code.
+    
+    This function expects to be execued when the REPL is sat at a fresh prompt
+    (e.g. following a call to :py:func:`interrupt_and_enter_repl`).
+    
+    The only reason to use this function is to set/modify variables in the
+    users' scope within the REPL -- e.g. to implement a safe 'paste'
+    functionality in a serial terminal implementation.
+    
+    In almost all other circumstances you should use :py:meth:`raw_paste_exec`
+    to execute arbitrary code on the device.
+    
+    Parameters
+    ==========
+    conn : Connection
+    code : str
+    batch_size : int
+        The number of bytes to write to the device at a time before waiting for
+        the terminal echo back. (This is a crude form of flow control).
+    """
+    # Enter paste mode
+    conn.write(b"\x05")  # (Ctrl+E)
+    expect_endswith(conn, b"paste mode; Ctrl-C to cancel, Ctrl-D to finish\r\n=== ")
+    
+    # Write out batch_size chars at a time
+    code_bytes = code.encode("utf-8")
+    while code_bytes:
+        batch = code_bytes[:batch_size]
+        code_bytes = code_bytes[batch_size:]
+        
+        conn.write(batch)
+        # Wait for echo back (including paste mode prompts)
+        expect(conn, batch.replace(b"\r", b"\r\n=== "))
+    
+    # Exit paste mode and execute
+    conn.write(b"\x04")  # (Ctrl+D)
+    expect(conn, b"\r\n")
+    
 
 
 @contextmanager

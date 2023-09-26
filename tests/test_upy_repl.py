@@ -17,6 +17,7 @@ from upyt.upy_repl import (
     expect,
     expect_endswith,
     interrupt_and_enter_repl,
+    paste_exec,
     raw_mode,
     raw_paste_exec,
     soft_reset_directly_into_repl,
@@ -180,6 +181,27 @@ class TestInterruptAndEnterRepl:
             b'  File "<stdin>", line 2, in <module>\r\n'
             b"KeyboardInterrupt: "
         )
+
+class TestPasteExec:
+
+    def test_basic_functionality(self, ser: Serial) -> None:
+        paste_exec(
+            ser,
+            (
+                "print('Hello')\n"  # NL separated
+                "print('World')\r\n"  # CRNL separated
+                "print('£1.23')"  # Unicode
+            ),
+        )
+        expect(ser, "Hello\r\nWorld\r\n£1.23\r\n".encode("utf-8"))  # Output
+        expect(ser, b">>> ")  # New prompt
+    
+    def test_flow_control(self, ser: Serial) -> None:
+        # The following snippet is long enough that not waiting for the remote
+        # device to handle it will inevetably result in it loosing some bytes
+        paste_exec(ser, f"print({' + '.join(map(str, range(100)))})\n" * 100)
+        expect(ser, (str(sum(range(100))).encode("utf-8") + b"\r\n") * 100)  # Output
+        expect(ser, b">>> ")  # New prompt
 
 
 def test_raw_mode(ser: Serial) -> None:
