@@ -22,7 +22,7 @@ on the device. Meanwhile the ID remains fixed and identifies the device itself
 over time.
 """
 
-from typing import Iterator
+from typing import Iterator, Callable
 
 from pathlib import Path
 
@@ -147,6 +147,7 @@ def sync_to_device(
     exclude: list[str] = default_exclude,
     force_enumerate_files: bool = False,
     force_safe_update: bool = False,
+    progress_callback: Callable[[Path, set[Path], set[Path]], None] | None = None,
 ) -> None:
     """
     Recursively synchronise the files and directories in the named host
@@ -172,6 +173,9 @@ def sync_to_device(
         If True, always verify the checksums of updated files match the host.
         Otherwise, only do this when the ``.upyt_id.txt`` file's version field
         indicates the filesystem differs from the local cache.
+    progress_callback : fn(current_file, files_to_update, all_files) or None
+        If given, this callback will be called once before each file detected
+        as having changed is written.
     """
     version, device_id = get_upyt_id(fs, device_dir)
     
@@ -255,8 +259,11 @@ def sync_to_device(
             (cache_dir / path).mkdir(exist_ok=True)
     
     # Ensure all files exist (and are up-to-date)
-    for path in to_update:
+    for path in sorted(to_update):
         if not (host_dir / path).is_dir():
+            if progress_callback is not None:
+                progress_callback(path, to_update, host_files)
+            
             device_path = f"{device_dir}/{'/'.join(path.parts)}"
             
             # If path is currently a directory, delete it to make way for the
@@ -285,7 +292,6 @@ def sync_to_device(
             if (cache_dir / path).is_dir():
                 shutil.rmtree(cache_dir / path)
             (cache_dir / path).write_bytes((host_dir / path).read_bytes())
-    
     
     # Update version in cache only now we're successful (see note at beginning
     # when we update the version on the device)

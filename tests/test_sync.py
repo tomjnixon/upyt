@@ -1,5 +1,7 @@
 import pytest
 
+from unittest.mock import Mock, call
+
 from typing import Any
 
 from pathlib import Path
@@ -586,4 +588,43 @@ class TestSyncToDevice:
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id, force_safe_update=True)
         assert read_device_tree(fs, dev_tmpdir_with_id).pop("file") == (
             b"Something different"
+        )
+    
+    def test_progress_reporting(
+        self,
+        fs: FilesystemAPI,
+        dev_tmpdir_with_id: str,
+        tmp_path: Path,
+    ) -> None:
+        write_local_tree(tmp_path, {"a": b"I am 'a'!", "b": b"I am 'b'!"})
+        
+        mock = Mock()
+        sync_to_device(fs, tmp_path, dev_tmpdir_with_id, progress_callback=mock)
+        
+        # Should have notified on every change
+        assert len(mock.mock_calls) == 2
+        mock.assert_has_calls(
+            call(
+                Path(name),
+                {Path("a"), Path("b")},
+                {Path("a"), Path("b")},
+            )
+            for name in ["a", "b"]
+        )
+        
+        # Minor change
+        write_local_tree(tmp_path, {"b": b"I am a changed 'b'!", "c": b"I am 'c'"})
+        
+        mock = Mock()
+        sync_to_device(fs, tmp_path, dev_tmpdir_with_id, progress_callback=mock)
+        
+        # Should have notified on only differences
+        assert len(mock.mock_calls) == 2
+        mock.assert_has_calls(
+            call(
+                Path(name),
+                {Path("b"), Path("c")},
+                {Path("a"), Path("b"), Path("c")},
+            )
+            for name in ["b", "c"]
         )
