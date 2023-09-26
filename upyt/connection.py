@@ -44,9 +44,22 @@ class Connection:
         """
         raise NotImplementedError()
     
+    def flush(self) -> int:
+        """
+        Flush any buffered written bytes to the device.
+        """
+        raise NotImplementedError()
+    
     def close(self) -> None:
         """
         Close the connection.
+        """
+        raise NotImplementedError()
+    
+    def fileno(self) -> int:
+        """
+        Return the file descriptor index which may be waited on whilst awaiting
+        data to read for this connection.
         """
         raise NotImplementedError()
     
@@ -114,8 +127,18 @@ class SerialConnection(Connection):
     def write(self, data: bytes) -> int:
         return self._ser.write(data)
     
+    def flush(self) -> None:
+        self._ser.flush()
+    
     def close(self) -> None:
         self._ser.close()
+    
+    def fileno(self) -> int:
+        """
+        Return the file descriptor index which may be waited on whilst awaiting
+        data to read for this connection.
+        """
+        return self._ser.fileno()
     
     @property
     def timeout(self) -> float:
