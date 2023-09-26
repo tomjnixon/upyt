@@ -72,7 +72,7 @@ def get_upyt_id(fs: FilesystemAPI, device_dir: str) -> tuple[int, str]:
     """
     Attempt to read and parse a `.upyt.txt" file from a given directory on the
     remote device. If one is not found (or is unparseable), generates a new
-    one.
+    one (and creates the directory, and any parent directories).
     
     Returns
     =======
@@ -85,6 +85,7 @@ def get_upyt_id(fs: FilesystemAPI, device_dir: str) -> tuple[int, str]:
     except (OSError, ValueError):
         version = 0
         device_id = f"{random.SystemRandom().randrange(1<<48):012X}"
+        fs.mkdir(device_dir, parents=True, exist_ok=True)
         fs.write_file(filename, encode_upyt_id(version, device_id))
         return (version, device_id)
 
@@ -129,6 +130,16 @@ def enumerate_local_files(host_dir: Path, exclude: list[str] = []) -> Iterator[P
             yield path
 
 
+def clear_local_cache(host_dir: Path) -> None:
+    """
+    Remove all UPyT cache directories in a given directory.
+    """
+    cache_dir = host_dir / UPYT_CACHE_DIRNAME
+    
+    if cache_dir.is_dir():
+        shutil.rmtree(cache_dir)
+
+
 def sync_to_device(
     fs: FilesystemAPI,
     host_dir: Path,
@@ -162,7 +173,6 @@ def sync_to_device(
         Otherwise, only do this when the ``.upyt_id.txt`` file's version field
         indicates the filesystem differs from the local cache.
     """
-    fs.mkdir(device_dir, parents=True, exist_ok=True)
     version, device_id = get_upyt_id(fs, device_dir)
     
     # Create cache directory (if absent)
