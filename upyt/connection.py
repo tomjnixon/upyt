@@ -18,6 +18,28 @@ from subprocess import Popen, PIPE
 
 class Connection:
     
+    @staticmethod
+    def from_specification(spec: str) -> "Connection":
+        """
+        Create a new :py:class:`Connection` given a text-based specification of
+        the connection details.
+        
+        Currently supported specifications are:
+        
+        * ``/path/to/serial/device`` or ``COM1`` -- Create a SerialConnection
+          assuming 9600 baud.
+        * ``/path/to/serial/device:9600`` or ``COM1:9600`` -- Create a
+          SerialConnection at a specific baudrate.
+        """
+        if ":" in spec:
+            port, _, baudrate_str = spec.rpartition(":")
+            baudrate = int(baudrate_str)
+        else:
+            port = spec
+            baudrate = 9600
+        
+        return SerialConnection(port, baudrate)
+    
     def read(self, num_bytes: int) -> bytes:
         """
         Read num_bytes bytes, returning however many bytes were read before the
