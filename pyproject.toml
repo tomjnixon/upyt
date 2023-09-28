@@ -8,3 +8,6 @@ version = "0.0.1"
 dependencies = [
     "pyserial",
 ]
+
+[project.scripts]
+upyt-terminal = "upyt.cli.terminal:main"
