@@ -361,6 +361,16 @@ class FilesystemAPI:
             """,
             ["os"],
         ),
+        # Get the size of a file in bytes
+        "file_len": (
+            """
+                def file_len(path):
+                    with open(path, "rb") as f:
+                        f.seek(0, 2)
+                        print(f.tell())
+            """,
+            [],
+        ),
         # Print next (approx) n-bytes worth of string literals from an iterator
         # as a Python list literal. Prints an empty list when the iterator is
         # exhausted.
@@ -644,6 +654,16 @@ class FilesystemAPI:
         self._close_file()
         
         return data
+
+    def file_len(self, path: str) -> int:
+        """
+        Get the size of a file in bytes.
+        """
+        self._ensure_defined("file_len")
+        out, err = raw_paste_exec(self._conn, f"file_len({path!r})")
+        assert err == "", err
+        
+        return int(out)
     
     def sync(self) -> None:
         """

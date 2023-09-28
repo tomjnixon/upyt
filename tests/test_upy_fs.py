@@ -474,6 +474,21 @@ class TestPrimitives:
             dirs, files = fs.ls("/")
             assert tmpdir[1:] not in dirs
     
+    @pytest.mark.parametrize("data", [b"", b"Foo"])
+    def test_file_len(self, ser, data: bytes) -> None:
+        with upy_filesystem(ser) as fs:
+            tmpdir = f"/d{random.randint(0, 10000)}"
+            fs.mkdir(tmpdir)
+            
+            fs.write_file(f"{tmpdir}/foo", data)
+            assert fs.file_len(f"{tmpdir}/foo") == len(data)
+            
+            fs.remove_recursive(tmpdir)
+            
+            # Check deleted
+            dirs, files = fs.ls("/")
+            assert tmpdir[1:] not in dirs
+    
     def test_rename_files(self, ser) -> None:
         with upy_filesystem(ser) as fs:
             tmpdir = f"/d{random.randint(0, 10000)}"
