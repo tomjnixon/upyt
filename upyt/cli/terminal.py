@@ -1,21 +1,9 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 
 from upyt.connection import Connection
 from upyt.upy_terminal import serial_terminal, GREY, RESET
 
-def main():
-    parser = ArgumentParser(
-        description="""
-            A MicroPython serial terminal.
-        """
-    )
-    parser.add_argument(
-        "device",
-        help="""
-            The device to connect to. For example `/dev/ttyACM0` or
-            `/dev/ttyACM0:115200`.
-        """,
-    )
+def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--quiet",
         "-q",
@@ -43,8 +31,8 @@ def main():
             shortcut.
         """,
     )
-    args = parser.parse_args()
 
+def main(args: Namespace):
     with Connection.from_specification(args.device) as conn:
         if not args.quiet:
             print(f"{GREY}Press Ctrl+] to exit.{RESET}")
@@ -56,7 +44,3 @@ def main():
             emulate_ctrl_l=not args.no_emulate_ctrl_l,
         )
         print()  # Move to new line on exit
-
-
-if __name__ == "__main__":
-    main()
