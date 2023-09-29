@@ -131,8 +131,8 @@ class SerialConnection(Connection):
     
     _ser: Serial
     
-    def __init__(self, *args, **kwargs) -> None:
-        self._ser = Serial(*args, **kwargs)
+    def __init__(self, *args, timeout=1.0, **kwargs) -> None:
+        self._ser = Serial(*args, timeout=timeout, **kwargs)
     
     def read(self, num_bytes: int) -> bytes:
         return self._ser.read(num_bytes)
