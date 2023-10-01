@@ -18,7 +18,8 @@ def add_arguments(parser: ArgumentParser) -> None:
         nargs="?",
         default=":/",
         help="""
-            The path to enumerate on the device. Defaults to /.
+            The path to enumerate on the device. Defaults to :/. Prefix with
+            ':' for device paths.
         """,
     )
     

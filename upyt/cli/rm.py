@@ -17,7 +17,8 @@ def add_arguments(parser: ArgumentParser) -> None:
         "path",
         nargs="+",
         help="""
-            The files or directories to delete. Acts recursively.
+            The files or directories to delete. Acts recursively. Prefix with
+            ':' for device paths.
         """,
     )
 

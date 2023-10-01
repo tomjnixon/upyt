@@ -1,3 +1,7 @@
+"""
+Serial terminal CLI utility.
+"""
+
 from argparse import ArgumentParser, Namespace
 
 from upyt.connection import Connection

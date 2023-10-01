@@ -17,7 +17,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         "path",
         nargs="+",
         help="""
-            The directories to create.
+            The directories to create. Prefix with ':' for device paths.
         """,
     )
     

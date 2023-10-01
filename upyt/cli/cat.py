@@ -17,7 +17,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         "path",
         nargs="+",
         help="""
-            The file to read.
+            The file to read. Prefix with ':' for device paths.
         """,
     )
 

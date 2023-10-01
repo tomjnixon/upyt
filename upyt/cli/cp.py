@@ -160,13 +160,13 @@ def add_arguments(parser: ArgumentParser) -> None:
         "source",
         nargs="+",
         help="""
-            Device paths must be prefixed by ':'.
+            Files to copy. Prefix with ':' for device paths.
         """,
     )
     parser.add_argument(
         "destination",
         help="""
-            Device paths must be prefixed by ':'.
+            Destination. Prefix with ':' for device paths.
         """,
     )
     parser.add_argument(
