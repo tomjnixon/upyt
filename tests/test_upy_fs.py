@@ -599,6 +599,7 @@ class TestPrimitives:
             assert fs.get_type(f"{tmpdir}/a_file") == PathType.file
             assert fs.get_type(f"{tmpdir}/a_dir") == PathType.dir
             assert fs.get_type(f"{tmpdir}/absent") == PathType.absent
+            assert fs.get_type(f"{tmpdir}/deep/absent") == PathType.absent
             
             fs.remove_recursive(tmpdir)
     
