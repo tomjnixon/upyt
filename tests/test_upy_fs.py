@@ -598,8 +598,7 @@ class TestPrimitives:
             
             assert fs.get_type(f"{tmpdir}/a_file") == PathType.file
             assert fs.get_type(f"{tmpdir}/a_dir") == PathType.dir
-            with pytest.raises(OSError):
-                fs.get_type(f"{tmpdir}/absent")
+            assert fs.get_type(f"{tmpdir}/absent") == PathType.absent
             
             fs.remove_recursive(tmpdir)
     

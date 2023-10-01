@@ -243,11 +243,8 @@ def sync_to_device(
             device_path = f"{device_dir}/{'/'.join(path.parts)}"
             
             # If path is a file, delete it
-            try:
-                if fs.get_type(device_path) == PathType.file:
-                    fs.remove_recursive(device_path)
-            except OSError:  # Directory doesn't exist yet
-                pass
+            if fs.get_type(device_path) == PathType.file:
+                fs.remove_recursive(device_path)
             
             # NB: We're working in sorted order so parents will be created
             # first as required
@@ -268,10 +265,11 @@ def sync_to_device(
             
             # If path is currently a directory, delete it to make way for the
             # file
-            try:
-                if fs.get_type(device_path) == PathType.dir:
-                    fs.remove_recursive(device_path)
+            if fs.get_type(device_path).is_dir():
+                fs.remove_recursive(device_path)
             
+            # Update/write the file
+            try:
                 fs.update_file(
                     device_path,
                     old_content=(cache_dir / path).read_bytes(),

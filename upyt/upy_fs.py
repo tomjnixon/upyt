@@ -282,6 +282,7 @@ class PathType(Enum):
     """Enumerates the types a path can have."""
     file = "file"
     dir = "dir"
+    absent = "absent"
     
     def is_file(self) -> bool:
         return self == PathType.file
@@ -478,14 +479,19 @@ class FilesystemAPI:
     
     def get_type(self, path: str) -> PathType:
         """
-        Determine of a path is a directory or a file. Raises an OSError if the
-        path does not exist.
+        Determine what kind of object is at the provided path.
         """
         self._ensure_defined("os")
         out, err = raw_paste_exec(
             self._conn, f"print(os.stat({path!r})[0])"
         )
-        traceback_to_oserror(err)
+        try:
+            traceback_to_oserror(err)
+        except OSError as exc:
+            if exc.args[0] == "[Errno 2] ENOENT":
+                return PathType.absent
+            else:
+                raise
         assert err == "", err
         
         mode = int(out)
