@@ -1,5 +1,5 @@
 """
-File copying utility.
+Copy files and directories.
 """
 
 from typing import Iterator, Iterable

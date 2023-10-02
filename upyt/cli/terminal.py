@@ -1,5 +1,5 @@
 """
-Serial terminal CLI utility.
+A serial terminal for MicroPython.
 """
 
 from argparse import ArgumentParser, Namespace

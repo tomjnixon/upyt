@@ -1,5 +1,5 @@
 """
-File reading utility.
+Concatenate one or more files.
 """
 
 import sys

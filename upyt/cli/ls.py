@@ -1,5 +1,5 @@
 """
-File-listing utility.
+Enumerate files and directories on a MicroPython device.
 """
 
 import sys

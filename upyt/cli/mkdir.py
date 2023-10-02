@@ -1,5 +1,5 @@
 """
-Directory-creation utility.
+Create directories on a MicroPython device.
 """
 
 import sys

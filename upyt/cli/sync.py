@@ -1,5 +1,7 @@
 """
-File sync (with serial terminal) CLI utility.
+Efficiently synchronise a local directory to a MicroPython device. With
+'--terminal', provides an integrated serial terminal where 'Ctrl+R' re-runs
+synchronisation.
 """
 
 from argparse import ArgumentParser, Namespace
@@ -30,7 +32,9 @@ def add_arguments(parser: ArgumentParser) -> None:
         default=":/",
         help="""
             Location of corresponding directory on device. Must start with ':'.
-            Defaults to the root of the device (i.e. ':/').
+            Defaults to the root of the device (i.e. ':/'). Note, existing
+            files will be updated but files which are deleted on the host will
+            *not* be automatically deleted on the device.
         """
     )
     parser.add_argument(
