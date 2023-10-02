@@ -708,6 +708,11 @@ class FilesystemAPI:
         If disabled, performance will be a little better but the resulting file
         may potentially be corrupt.
         """
+        # Special case: Unless in safe mode, and file exists, do nothing if old
+        # == new
+        if not safe and old_content == new_content and self.get_type(path).is_file():
+            return
+        
         self._open_file(path, "rb", {"r": "read", "s": "seek"}, "fi")
         
         # We will construct the patch in a separate (temporary) file
