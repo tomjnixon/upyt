@@ -36,15 +36,30 @@ def add_arguments(parser: ArgumentParser) -> None:
         """,
     )
 
+
+def terminal(
+    conn: Connection,
+    args: Namespace,
+    extra_exit_on: list[str] = [],
+    extra_help: str = "",
+    show_help: bool = True,
+) -> bytes:
+    """
+    Run the terminal, returning the exit sequence used to exit it.
+    """
+    if not args.quiet and show_help:
+        print(f"{GREY}Press Ctrl+] to exit. {extra_help}{RESET}")
+    
+    exit_seq = serial_terminal(
+        conn,
+        exit_on=["\x1d"] + extra_exit_on,  # Ctrl+]
+        automatic_paste_mode=not args.no_automatic_paste_mode,
+        emulate_ctrl_l=not args.no_emulate_ctrl_l,
+    )
+    print()  # Move to new line on exit
+    return exit_seq
+
+
 def main(args: Namespace):
     with Connection.from_specification(args.device) as conn:
-        if not args.quiet:
-            print(f"{GREY}Press Ctrl+] to exit.{RESET}")
-        
-        exit_seq = serial_terminal(
-            conn,
-            exit_on=["\x1d"],  # Ctrl+]
-            automatic_paste_mode=not args.no_automatic_paste_mode,
-            emulate_ctrl_l=not args.no_emulate_ctrl_l,
-        )
-        print()  # Move to new line on exit
+        terminal(conn, args)

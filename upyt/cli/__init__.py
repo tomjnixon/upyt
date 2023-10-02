@@ -27,6 +27,7 @@ def main() -> None:
     
     subcommands = [
         (["terminal", "term", "t"], "a serial terminal for MicroPython."),
+        (["sync"], "efficiently synchronise a directory to the device"),
         ("ls", "list files and directories"),
         ("mkdir", "create a directory"),
         ("rm", "remove files and directories"),
