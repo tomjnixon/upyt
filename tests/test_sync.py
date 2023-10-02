@@ -182,9 +182,6 @@ class TestSyncToDevice:
             # Directories
             {"a": {}},
             {"a": {"b": {}}},
-            # Directory which happens to share name of cache directory (should
-            # not be suppressed!)
-            {"a": {".upyt_cache": {}}},
         ],
     )
     def test_create_from_scatch(

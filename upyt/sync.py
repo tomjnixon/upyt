@@ -45,6 +45,8 @@ default_exclude = [
     "*.tmp",
     "*.swp",
     "*~",
+    # Upyt litter
+    ".upyt_cache",
 ]
 
 
