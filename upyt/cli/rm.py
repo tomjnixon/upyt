@@ -34,5 +34,5 @@ def main(args: Namespace):
                 )
             hfs = HybridFilesystemAPI(fs)
             for path in args.path:
-                hfs.remove_recursive(args.path)
+                hfs.remove_recursive(path)
             hfs.sync()
