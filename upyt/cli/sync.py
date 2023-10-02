@@ -162,6 +162,7 @@ def main(args: Namespace):
                     force_safe_update=args.force_safe_update,
                     progress_callback=progress_callback,
                 )
+                fs.sync()
                 if not args.terminal:
                     return
             
