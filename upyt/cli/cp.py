@@ -186,13 +186,13 @@ def main(args: Namespace):
         interrupt_and_enter_repl(conn)
         with upy_filesystem(conn) as fs:
             if not (
-                any(source.startswith(":") for source in sources) or
-                destination.startswith(":")
+                any(source.startswith(":") for source in args.source) or
+                args.destination.startswith(":")
             ):
                 print(
                     "warning: neither source nor destination on device (i.e. starting with ':')",
                     file=sys.stderr,
                 )
             hfs = HybridFilesystemAPI(fs)
-            cp(hfs, args.sources, args.destination, args.recursive)
+            cp(hfs, args.source, args.destination, args.recursive)
             hfs.sync()
