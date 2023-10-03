@@ -7,6 +7,7 @@ from argparse import ArgumentParser, Namespace
 from upyt.connection import Connection
 from upyt.upy_terminal import serial_terminal, GREY, RESET
 
+
 def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--quiet",
@@ -49,7 +50,7 @@ def terminal(
     """
     if not args.quiet and show_help:
         print(f"{GREY}Press Ctrl+] to exit. {extra_help}{RESET}")
-    
+
     exit_seq = serial_terminal(
         conn,
         exit_on=["\x1d"] + extra_exit_on,  # Ctrl+]

@@ -58,7 +58,7 @@ def decode_upyt_id(content: bytes) -> tuple[int, str]:
     """
     Parse the contents of a .upyt_id.txt file, returning the encoded (version,
     device_id) pair.
-    
+
     Raises ValueError if the file is invalid.
     """
     version, device_id = content.decode("ascii").split(" ")
@@ -67,7 +67,7 @@ def decode_upyt_id(content: bytes) -> tuple[int, str]:
 
 def encode_upyt_id(version: int, device_id: str) -> bytes:
     """Encode a .upyt_id.txt file."""
-    return f"{version:03d} {device_id}".encode('ascii')
+    return f"{version:03d} {device_id}".encode("ascii")
 
 
 def get_upyt_id(fs: FilesystemAPI, device_dir: str) -> tuple[int, str]:
@@ -75,7 +75,7 @@ def get_upyt_id(fs: FilesystemAPI, device_dir: str) -> tuple[int, str]:
     Attempt to read and parse a `.upyt.txt" file from a given directory on the
     remote device. If one is not found (or is unparseable), generates a new
     one (and creates the directory, and any parent directories).
-    
+
     Returns
     =======
     version : int
@@ -96,9 +96,9 @@ def enumerate_local_files(host_dir: Path, exclude: list[str] = []) -> Iterator[P
     """
     Iterate over the files and directories in the provided directory hierarchy,
     omiting any excluded items.
-    
+
     Exclusion rules follow (approximately) the same pattern rules as rsync:
-    
+
     * ``name`` -- Any file or directory with the name 'name'
     * ``name/`` -- Any directory with the name 'name'
     * ``foo/bar/baz`` -- Any file or directory called baz whose two immediate
@@ -118,17 +118,17 @@ def enumerate_local_files(host_dir: Path, exclude: list[str] = []) -> Iterator[P
             # Treat non-rooted exclusions as applying at any depth
             exclusion = f"**/{exclusion}"
         excluded.update(host_dir.glob(exclusion))
-    
+
     to_visit = [host_dir]
     while to_visit:
         directory = to_visit.pop(0)
-        
+
         for path in directory.iterdir():
             if path in excluded:
                 continue
             if path.is_dir():
                 to_visit.append(path)
-            
+
             yield path
 
 
@@ -137,7 +137,7 @@ def clear_local_cache(host_dir: Path) -> None:
     Remove all UPyT cache directories in a given directory.
     """
     cache_dir = host_dir / UPYT_CACHE_DIRNAME
-    
+
     if cache_dir.is_dir():
         shutil.rmtree(cache_dir)
 
@@ -155,7 +155,7 @@ def sync_to_device(
     Recursively synchronise the files and directories in the named host
     directory into the specified target directory. Extra files and directories
     already present on the device will be left untouched.
-    
+
     Parameters
     ==========
     fs : FilesystemAPI
@@ -180,23 +180,25 @@ def sync_to_device(
         as having changed is written.
     """
     version, device_id = get_upyt_id(fs, device_dir)
-    
+
     # Create cache directory (if absent)
     cache_dir = host_dir / UPYT_CACHE_DIRNAME / device_id
     cache_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # See if the cache is out-of-date with respect to what is on the device
     try:
         cache_version = decode_upyt_id((cache_dir / UPYT_ID_FILENAME).read_bytes())[0]
     except (OSError, ValueError):
         cache_version = None
     out_of_date_cache = cache_version != version
-    
+
     # Update the remote version now (but not the cached version) so that if
     # we're interrupted/crash we'll know the cache could be out-of-sync
     version += 1
-    fs.write_file(f"{device_dir}/{UPYT_ID_FILENAME}", encode_upyt_id(version, device_id))
-    
+    fs.write_file(
+        f"{device_dir}/{UPYT_ID_FILENAME}", encode_upyt_id(version, device_id)
+    )
+
     # Enumerate files on the host/cache
     host_files = {
         p.relative_to(host_dir)
@@ -205,28 +207,31 @@ def sync_to_device(
     cached_files = {
         p.relative_to(cache_dir) for p in cache_dir.rglob("*") if p != cache_dir
     }
-    
+
     # Work out which files (might) have changed based on the cache
     if out_of_date_cache or force_enumerate_files:
         # Don't use cache
         to_update = host_files
     else:
         to_update = {
-            p for p in host_files
+            p
+            for p in host_files
             if (
                 # File/directory not on device yet
-                p not in cached_files or
+                p not in cached_files
+                or
                 # Changed from/to file/directory
-                (host_dir / p).is_file() != (cache_dir / p).is_file() or
+                (host_dir / p).is_file() != (cache_dir / p).is_file()
+                or
                 # Content changed
                 (
-                    (host_dir / p).is_file() and
-                    (cache_dir / p).is_file() and
-                    (host_dir / p).read_bytes() != (cache_dir / p).read_bytes()
+                    (host_dir / p).is_file()
+                    and (cache_dir / p).is_file()
+                    and (host_dir / p).read_bytes() != (cache_dir / p).read_bytes()
                 )
             )
         }
-    
+
     # Flush files from cache which are nolonger present (this will ensure no
     # directories we're about to insert into the cache are blocked by
     # (stale) files with the same name in the cache.
@@ -238,38 +243,38 @@ def sync_to_device(
             shutil.rmtree(full_path)
         elif full_path.is_file():
             full_path.unlink()
-    
+
     # Ensure all directories exist (and are directories!)
     for path in sorted(to_update):
         if (host_dir / path).is_dir():
             device_path = f"{device_dir}/{'/'.join(path.parts)}"
-            
+
             # If path is a file, delete it
             if fs.get_type(device_path) == PathType.file:
                 fs.remove_recursive(device_path)
-            
+
             # NB: We're working in sorted order so parents will be created
             # first as required
             fs.mkdir(device_path, exist_ok=True)
-            
+
             # Add directory to cache (if not present already)
             if (cache_dir / path).is_file():
                 (cache_dir / path).unlink()
             (cache_dir / path).mkdir(exist_ok=True)
-    
+
     # Ensure all files exist (and are up-to-date)
     for path in sorted(to_update):
         if not (host_dir / path).is_dir():
             if progress_callback is not None:
                 progress_callback(path, to_update, host_files)
-            
+
             device_path = f"{device_dir}/{'/'.join(path.parts)}"
-            
+
             # If path is currently a directory, delete it to make way for the
             # file
             if fs.get_type(device_path).is_dir():
                 fs.remove_recursive(device_path)
-            
+
             # Update/write the file
             try:
                 fs.update_file(
@@ -287,12 +292,12 @@ def sync_to_device(
                 #
                 # In all of these cases, we just write the file from scratch
                 fs.write_file(device_path, (host_dir / path).read_bytes())
-            
+
             # Add file to cache (if not present already)
             if (cache_dir / path).is_dir():
                 shutil.rmtree(cache_dir / path)
             (cache_dir / path).write_bytes((host_dir / path).read_bytes())
-    
+
     # Update version in cache only now we're successful (see note at beginning
     # when we update the version on the device)
     (cache_dir / UPYT_ID_FILENAME).write_bytes(encode_upyt_id(version, device_id))

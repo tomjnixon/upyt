@@ -20,7 +20,7 @@ def add_arguments(parser: ArgumentParser) -> None:
             The directories to create. Prefix with ':' for device paths.
         """,
     )
-    
+
     parser.add_argument(
         "--parents",
         "-p",

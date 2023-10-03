@@ -46,7 +46,7 @@ def terminal_mode(terminal: TextIO = sys.stdin):
     """
     old = termios.tcgetattr(terminal)
     new = copy.deepcopy(old)
-    
+
     new[3] = (
         new[3]
         # Disable canonical (e.g. the common line-buffered mode)
@@ -57,13 +57,13 @@ def terminal_mode(terminal: TextIO = sys.stdin):
         # into signals
         & ~termios.ISIG
     )
-    
+
     # Set the minimum read size to 1 byte
     new[6][termios.VMIN] = 1
-    
+
     # Disable timeout while waiting for a byte
     new[6][termios.VTIME] = 0
-    
+
     termios.tcsetattr(terminal, termios.TCSANOW, new)
     try:
         yield
@@ -116,11 +116,12 @@ def nonblocking_connection(conn: Connection):
 
 class ExitTerminal(Exception):
     """Used internally within :py:class:`raw_serial_terminal`."""
-    
+
     @classmethod
     def make_raise_cb(cls, match_string: str) -> Callable[[], None]:
         def callback() -> None:
             raise cls(match_string)
+
         return callback
 
 
@@ -132,9 +133,9 @@ def raw_serial_terminal(
 ) -> str:
     """
     A bare-minimum implementation of a MicroPython compatible serial terminal.
-    
+
     Things this does:
-    
+
     * Setup terminal in non-echo mode
     * Translate system text encoding to/from UTF-8 for the MicroPython device
     * Translate line-endings to/from CRLF for the MicroPython device
@@ -142,7 +143,7 @@ def raw_serial_terminal(
       forwarded to MicroPython rather than triggering a KeyboardInterrupt
       here).
     * Restore terminal configuration on exit or if an exception is thrown.
-    
+
     This function will gracefully exit if any of the strings in the 'exit_on'
     list are found in the stdin stream (i.e. are typed by the user). The
     matched string is returned by this function and *not* forwarded to the
@@ -152,7 +153,7 @@ def raw_serial_terminal(
     # encountered in the stream, an ExitTerminal exception is thrown containing
     # the discovered match.
     stdin = ReadProxy(stdin, [match(s, ExitTerminal.make_raise_cb(s)) for s in exit_on])
-    
+
     try:
         with (
             terminal_mode(stdin),
@@ -162,13 +163,13 @@ def raw_serial_terminal(
         ):
             sel.register(conn, selectors.EVENT_READ)
             sel.register(stdin, selectors.EVENT_READ)
-            
+
             # The MicroPython shell expects/produces UTF-8 (well actually it
             # expects ASCII, for now, but may one day accept UTF-8). We'll use an
             # incremental decoder to parse the incoming stream since we may not
             # receieve whole code points in every message.
             utf_8_decoder = codecs.lookup("utf-8").incrementaldecoder(errors="replace")
-            
+
             while True:
                 for key, _events in sel.select():
                     if key.fileobj is stdin:
@@ -193,11 +194,11 @@ def handle_bracketed_paste(
     """
     Assuming a BRACKETED_PASTE_BEGIN sentinel has just been read from stdin,
     read the rest of the pasted value and then send it to MicroPython.
-    
+
     For single-line pastes, simply sends the string verbatim to MicroPython.
     Upon resuming the serial terminal process, the pasted text should be echoed
     back by the MicroPython REPL.
-    
+
     For multi-line pastes, uses paste mode (interrupting any ongoing line
     editing operation or running code). A dummy representation of the
     paste-mode echoed text is printed to stdout whilst the actual paste-mode
@@ -209,13 +210,13 @@ def handle_bracketed_paste(
     buffer = ""
     while not buffer.endswith(BRACKETED_PASTE_END):
         buffer += stdin.read(1)
-    content = buffer[:-len(BRACKETED_PASTE_END)]
-    
+    content = buffer[: -len(BRACKETED_PASTE_END)]
+
     # NB: We consider 'single line' to mean anything where all the
     # non-whitespace occurs on a single line -- leading/trailing
     # whitespace are ignored.
     single_line = len(content.strip("\r\n").splitlines()) == 1
-    
+
     if single_line:  # Paste as-is
         conn.write(content.replace("\n", "\r\n").encode("utf-8"))
     else:  # Use paste mode
@@ -224,7 +225,7 @@ def handle_bracketed_paste(
             interruption_output = interrupt_and_enter_repl(conn)
             stdout.write(interruption_output.decode("utf-8", "replace"))
             stdout.flush()
-            
+
             # Paste (and print mock output to terminal)
             paste_exec(conn, content)
             stdout.write("\n")
@@ -238,7 +239,9 @@ def handle_bracketed_paste(
             )
 
 
-def handle_ctrl_l_emulation(conn: Connection, stdout: TextIO, timeout: float = 0.1) -> None:
+def handle_ctrl_l_emulation(
+    conn: Connection, stdout: TextIO, timeout: float = 0.1
+) -> None:
     """
     Crudely emulate the typical clear-screen behaviour of a terminal by
     clearing the display and pressing return to get a new prompt.
@@ -246,10 +249,10 @@ def handle_ctrl_l_emulation(conn: Connection, stdout: TextIO, timeout: float = 0
     # Clear the screen
     stdout.write(f"{CLEAR}{CURSOR_HOME}")
     stdout.flush()
-    
+
     # Press enter to get a new REPL
     conn.write(b"\r\n")
-    
+
     # Absorb the echoed newline to prevent the new prompt being printed on the
     # second line of the newly cleared screen.
     old_timeout = conn.timeout
@@ -276,11 +279,11 @@ def serial_terminal(
     Implements a serial terminal for the MicroPython REPL, with a handful of
     optional niceties to make it feel more like interacting with a normal
     Python shell.
-    
+
     The terminal will run until a keyboard sequence listed in the `exit_on`
     argument is encountered. (By default this is Ctrl+]). This function will
     return the matched key sequence which caused it to exit.
-    
+
     Parameters
     ==========
     conn : Connection
@@ -305,7 +308,7 @@ def serial_terminal(
         paste_mode_context_manager = bracketed_paste_mode(stdout)
     else:
         paste_mode_context_manager = nullcontext()
-    
+
     with paste_mode_context_manager:
         while True:
             exit_sequence = raw_serial_terminal(
@@ -313,12 +316,12 @@ def serial_terminal(
                 stdin=stdin,
                 stdout=stdout,
                 exit_on=(
-                    ([BRACKETED_PASTE_BEGIN] if automatic_paste_mode else []) +
-                    (["\x0c"] if emulate_ctrl_l else []) +
-                    exit_on
+                    ([BRACKETED_PASTE_BEGIN] if automatic_paste_mode else [])
+                    + (["\x0c"] if emulate_ctrl_l else [])
+                    + exit_on
                 ),
             )
-            
+
             if exit_sequence == BRACKETED_PASTE_BEGIN:
                 handle_bracketed_paste(
                     conn=conn,

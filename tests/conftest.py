@@ -15,19 +15,22 @@ def pytest_addoption(parser):
     )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def board(request):
-    return request.config.getoption('board', skip=True)
+    return request.config.getoption("board", skip=True)
 
-@pytest.fixture(scope='session')
+
+@pytest.fixture(scope="session")
 def ser(board) -> Connection:
     with Connection.from_specification(board) as ser:
         yield ser
+
 
 @pytest.fixture
 def fs(ser: Connection) -> FilesystemAPI:
     with upy_filesystem(ser) as fs:
         yield fs
+
 
 @pytest.fixture
 def dev_tmpdir(fs: FilesystemAPI) -> str:
@@ -36,9 +39,9 @@ def dev_tmpdir(fs: FilesystemAPI) -> str:
         fs.remove_recursive(name)
     except OSError:  # Doesn't exist
         pass
-    
+
     fs.mkdir(name, parents=True)
-    
+
     try:
         yield name
     finally:

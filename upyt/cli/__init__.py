@@ -22,9 +22,9 @@ def main() -> None:
             variable, if set, required otherwise.
         """,
     )
-    
+
     subparsers = parser.add_subparsers(title="commands", required=True)
-    
+
     subcommands = [
         (["terminal", "term", "t"], "a serial terminal for MicroPython."),
         ("sync", "efficiently synchronise a directory to the device"),
@@ -36,11 +36,11 @@ def main() -> None:
         ("cat", "read (and concatenate) files"),
         ("cp", "copy files to and from the device"),
     ]
-    
+
     for command, help_text in subcommands:
         if isinstance(command, str):
             command = [command]
-        
+
         command_module = import_module(f"upyt.cli.{command[0]}")
         subparser = subparsers.add_parser(
             command[0],
@@ -50,12 +50,12 @@ def main() -> None:
         )
         command_module.add_arguments(subparser)
         subparser.set_defaults(cmd=command_module.main)
-    
+
     args = parser.parse_args()
-    
+
     if args.device is None:
         parser.error("--device is required if UPYT_DEVICE is not set")
-    
+
     args.cmd(args)
 
 

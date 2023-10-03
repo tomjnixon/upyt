@@ -19,12 +19,13 @@ from upyt.sync import sync_to_device, default_exclude
 
 from upyt.cli import terminal
 
+
 def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         "source",
         help="""
             Local directory to synchronise to the device.
-        """
+        """,
     )
     parser.add_argument(
         "destination",
@@ -35,7 +36,7 @@ def add_arguments(parser: ArgumentParser) -> None:
             Defaults to the root of the device (i.e. ':/'). Note, existing
             files will be updated but files which are deleted on the host will
             *not* be automatically deleted on the device.
-        """
+        """,
     )
     parser.add_argument(
         "--exclude",
@@ -46,7 +47,7 @@ def add_arguments(parser: ArgumentParser) -> None:
             May be used multiple times. Unless --no-default-exclusions is
             given, common temporary and version control files and directories
             are excluded by default.
-        """
+        """,
     )
     parser.add_argument(
         "--no-default-exclusions",
@@ -56,7 +57,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         help="""
             If given, don't exclude any temporary or version control files or
             directories by default.
-        """
+        """,
     )
     parser.add_argument(
         "--force-enumerate-files",
@@ -65,7 +66,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         default=False,
         help="""
             If given, always scans the device to check for missing files.
-        """
+        """,
     )
     parser.add_argument(
         "--force-safe-update",
@@ -77,7 +78,7 @@ def add_arguments(parser: ArgumentParser) -> None:
             If given, always verify that modified files on the device have been
             edited correctly. Only necessary if files may have been changed on
             the device.
-        """
+        """,
     )
     parser.add_argument(
         "--reset",
@@ -87,7 +88,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         help="""
             If given, reset the device before and after syncing. Otherwise, the
             device will be left at the REPL.
-        """
+        """,
     )
     parser.add_argument(
         "--terminal",
@@ -97,7 +98,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         help="""
             If given, start the serial terminal after syncing. Synchronisation
             can be re-run at any time by pressing ctrl+r.
-        """
+        """,
     )
     terminal.add_arguments(parser)
 
@@ -113,7 +114,7 @@ def print_progress(
         suffix = RESET
     else:
         prefix = suffix = ""
-    
+
     print(f"{prefix}{current_file}...{suffix}")
 
 
@@ -131,26 +132,26 @@ def main(args: Namespace):
             file=sys.stderr,
         )
         sys.exit(1)
-    
+
     # Compile exclusions list
     if args.no_default_exclusions:
         exclude = []
     else:
         exclude = default_exclude
     exclude += args.exclude
-    
+
     # Select progress display
     if args.quiet:
         progress_callback = None
     else:
         progress_callback = partial(print_progress, terminal_mode=args.terminal)
-    
+
     with Connection.from_specification(args.device) as conn:
         first_run = True
         while True:
             if args.terminal and not args.quiet:
                 print(f"{GREY}Synchronising files:{RESET}")
-            
+
             interrupt_and_enter_repl(conn)
             with upy_filesystem(conn) as fs:
                 sync_to_device(
@@ -165,27 +166,27 @@ def main(args: Namespace):
                 fs.sync()
                 if not args.terminal:
                     return
-            
+
             if not args.quiet:
                 print(f"{GREY}Done{RESET}")
-            
+
             if args.reset:
                 conn.write(b"\x04")  # ctrl+d (trigger reset)
             else:
                 conn.write(b"\r\n")  # Force prompt to be shown
             expect(conn, b"\r\n")
-            
+
             exit_seq = terminal.terminal(
                 conn,
                 args,
                 extra_exit_on=["\x12"],  # ctlr+r"
                 extra_help="Press Ctrl+R to re-run file sync.",
-                show_help=first_run
+                show_help=first_run,
             )
             if exit_seq != "\x12":  # != ctrl+r
                 return
             first_run = False
-            
+
             interrupt_message = interrupt_and_enter_repl(conn)
             if interrupt_message:
                 sys.stdout.buffer.write(interrupt_message + b"\n")

@@ -29,7 +29,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         help="""
             If given, delete directories and their contents recursively.
             Otherwise, will only delete files.
-        """
+        """,
     )
     parser.add_argument(
         "--force",
@@ -38,7 +38,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         default=False,
         help="""
             Suppress errors when deleting non-existant files.
-        """
+        """,
     )
 
 
@@ -52,10 +52,10 @@ def main(args: Namespace):
                     file=sys.stderr,
                 )
             hfs = HybridFilesystemAPI(fs)
-            
+
             for path in args.path:
                 filetype = hfs.get_type(path)
-                
+
                 if filetype == PathType.absent:
                     if not args.force:
                         print(f"error: file not found: {path}", file=sys.stderr)

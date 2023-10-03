@@ -13,15 +13,13 @@ from upyt.read_proxy import (
 )
 
 
-
 class TestReplace:
-    
     def test_replacement(self) -> None:
         seq = iter("abc12312X")
         out = replace("123", "<1-2-3>")(seq)
         for got, exp in zip(out, "abc<1-2-3>12X"):
             assert got == exp
-    
+
     def test_retain_while_uncertain(self) -> None:
         seq = iter(list("abc12") + [None] + list("3"))
         out = replace("123", "<1-2-3>")(seq)
@@ -30,49 +28,48 @@ class TestReplace:
 
 
 class TestCallOnMatch:
-    
     def test_called(self) -> None:
         seq = "abc12312X"
         mock = Mock()
         out = match("123", mock)(seq)
-        
+
         # Should not be called initially
         for exp, got in zip("abc", out):
             assert not mock.called
             assert got == exp
-        
+
         # When we encounter the matched sequence we should be called
         for exp, got in zip("123", out):
             assert len(mock.mock_calls) == 1
             assert got == exp
-        
+
         # And whatever follows should come out afterwards (with no further
         # calls)
         for exp, got in zip("12X", out):
             assert len(mock.mock_calls) == 1
             assert got == exp
-    
+
     def test_retain_while_uncertain(self) -> None:
         seq = iter(list("abc12") + [None] + list("3"))
         mock = Mock()
         out = match("123", mock)(seq)
-        
+
         for exp, got in zip(list("abc") + [None], out):
             assert not mock.called
             assert got == exp
-        
+
         for exp, got in zip(list("123"), out):
             assert len(mock.mock_calls) == 1
             assert got == exp
-    
+
     def test_breakout_with_exception(self) -> None:
         seq = iter("abc123456")
         mock = Mock(side_effect=NotImplementedError)
         out = match("123", mock)(seq)
-        
+
         for exp, got in zip("abc", out):
             assert got == exp
-        
+
         # When called, we should hit an exception as expected
         with pytest.raises(NotImplementedError):
             next(out)
@@ -83,18 +80,17 @@ class TestCallOnMatch:
 
 
 class TestReadProxy:
-    
     def test_read_whole(self) -> None:
         f = StringIO("ABC")
         p = ReadProxy(f, [])
-        
+
         assert p.read() == "ABC"
         assert p.read() == ""
 
     def test_read_partial(self) -> None:
         f = StringIO("ABC")
         p = ReadProxy(f, [])
-        
+
         assert p.read(1) == "A"
         assert p.read(2) == "BC"
         assert p.read(3) == ""
@@ -116,5 +112,5 @@ class TestReadProxy:
                 replace(">", ">>>"),
             ],
         )
-        
+
         assert p.read() == "ABC<<<1-2-3>>>12X"

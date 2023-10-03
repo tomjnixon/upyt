@@ -22,7 +22,7 @@ def add_arguments(parser: ArgumentParser) -> None:
             ':' for device paths.
         """,
     )
-    
+
     parser.add_argument(
         "--long",
         "-l",
@@ -43,18 +43,18 @@ def main(args: Namespace):
                     file=sys.stderr,
                 )
             hfs = HybridFilesystemAPI(fs)
-            
+
             directories, files = hfs.ls(args.path)
             entries = sorted(
                 (entry, typ)
                 for lst, typ in [(directories, "d"), (files, "-")]
                 for entry in lst
             )
-            
+
             for name, typ in entries:
                 if typ == "d":
                     name = f"{name}/"
-                
+
                 if args.long:
                     if typ != "d":
                         size = hfs.file_len(f"{args.path}/{name}")

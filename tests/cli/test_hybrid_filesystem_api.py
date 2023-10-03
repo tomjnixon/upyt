@@ -16,39 +16,41 @@ from trees import (
 def test_get_type(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str) -> None:
     (tmp_path / "loc_file").touch()
     (tmp_path / "loc_dir").mkdir()
-    
+
     fs.write_file(f"{dev_tmpdir}/dev_file", b"")
     fs.mkdir(f"{dev_tmpdir}/dev_dir")
-    
+
     hfs = HybridFilesystemAPI(fs)
-    
+
     assert hfs.get_type(str(tmp_path / "loc_file")) == PathType.file
     assert hfs.get_type(str(tmp_path / "loc_dir")) == PathType.dir
     assert hfs.get_type(str(tmp_path / "loc_absent")) == PathType.absent
-    
+
     assert hfs.get_type(f":{dev_tmpdir}/dev_file") == PathType.file
     assert hfs.get_type(f":{dev_tmpdir}/dev_dir") == PathType.dir
     assert hfs.get_type(f":{dev_tmpdir}/dev_absent") == PathType.absent
 
 
 @pytest.mark.parametrize("device", [False, True])
-def test_mkdir(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) -> None:
+def test_mkdir(
+    fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
+) -> None:
     hfs = HybridFilesystemAPI(fs)
-    
+
     root = f":{dev_tmpdir}" if device else str(tmp_path)
-    
+
     hfs.mkdir(f"{root}/foo")
-    
+
     # Already exists
     with pytest.raises(OSError):
         hfs.mkdir(f":{root}/foo")
     hfs.mkdir(f"{root}/foo", exist_ok=True)
-    
+
     # Multiple levels
     with pytest.raises(OSError):
         hfs.mkdir(f":{root}/qux/quo")
     hfs.mkdir(f"{root}/qux/quo", parents=True)
-    
+
     tree = read_device_tree(fs, dev_tmpdir) if device else read_local_tree(tmp_path)
     assert tree == {
         "foo": {},
@@ -57,9 +59,11 @@ def test_mkdir(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool)
 
 
 @pytest.mark.parametrize("device", [False, True])
-def test_remove_recursive(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) -> None:
+def test_remove_recursive(
+    fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
+) -> None:
     hfs = HybridFilesystemAPI(fs)
-    
+
     tree = {
         "file": b"I am a file",
         "empty_dir": {},
@@ -72,22 +76,23 @@ def test_remove_recursive(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, de
     else:
         root = str(tmp_path)
         write_local_tree(tmp_path, tree)
-    
+
     hfs.remove_recursive(f"{root}/file")
     hfs.remove_recursive(f"{root}/empty_dir")
     hfs.remove_recursive(f"{root}/full_dir")
     with pytest.raises(OSError):
         hfs.remove_recursive(f"{root}/not_exist")
-    
+
     tree = read_device_tree(fs, dev_tmpdir) if device else read_local_tree(tmp_path)
     assert tree == {
         "left_behind": b"I will be spared!",
     }
 
+
 @pytest.mark.parametrize("device", [False, True])
 def test_ls(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) -> None:
     hfs = HybridFilesystemAPI(fs)
-    
+
     tree = {
         "file": b"I am a file",
         "dir": {"foo": b"I am foo", "bar": {}},
@@ -98,19 +103,22 @@ def test_ls(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) ->
     else:
         root = str(tmp_path)
         write_local_tree(tmp_path, tree)
-    
+
     assert hfs.ls(root) == (["dir"], ["file"])
-    
+
     with pytest.raises(OSError):
         hfs.ls(f"{root}/file")
-    
+
     with pytest.raises(OSError):
         hfs.ls(f"{root}/not_exist")
 
+
 @pytest.mark.parametrize("device", [False, True])
-def test_rename(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) -> None:
+def test_rename(
+    fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
+) -> None:
     hfs = HybridFilesystemAPI(fs)
-    
+
     tree = {
         "a": b"I am A",
         "overwrite_with_a": b"I am to be overwritten",
@@ -126,23 +134,23 @@ def test_rename(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
     else:
         root = str(tmp_path)
         write_local_tree(tmp_path, tree)
-    
+
     hfs.rename(f"{root}/a", f"{root}/overwrite_with_a")
     hfs.rename(f"{root}/b", f"{root}/new_name_for_b")
     hfs.rename(f"{root}/c", f"{root}/new_name_for_c")
-    
+
     with pytest.raises(OSError):
         hfs.rename(f"{root}/not_moved_file", f"{root}/dir")
-    
+
     with pytest.raises(OSError):
         hfs.rename(f"{root}/not_moved_file", f"{root}/non-existing-intermediate/dir")
-    
+
     with pytest.raises(OSError):
         hfs.rename(f"{root}/not_moved_dir", f"{root}/dir")
-    
+
     with pytest.raises(OSError):
         hfs.rename(f"{root}/not_moved_dir", f"{root}/non-existing-intermediate/dir")
-    
+
     tree = read_device_tree(fs, dev_tmpdir) if device else read_local_tree(tmp_path)
     assert tree == {
         "overwrite_with_a": b"I am A",
@@ -155,21 +163,25 @@ def test_rename(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
 
 
 @pytest.mark.parametrize("device", [False, True])
-def test_write_file(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) -> None:
+def test_write_file(
+    fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
+) -> None:
     hfs = HybridFilesystemAPI(fs)
-    
+
     root = f":{dev_tmpdir}" if device else str(tmp_path)
-    
+
     hfs.write_file(f"{root}/foo", b"I am foo!")
-    
+
     tree = read_device_tree(fs, dev_tmpdir) if device else read_local_tree(tmp_path)
     assert tree == {"foo": b"I am foo!"}
 
 
 @pytest.mark.parametrize("device", [False, True])
-def test_read_file(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) -> None:
+def test_read_file(
+    fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
+) -> None:
     hfs = HybridFilesystemAPI(fs)
-    
+
     tree = {
         "foo": b"I am foo",
     }
@@ -179,14 +191,16 @@ def test_read_file(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: b
     else:
         root = str(tmp_path)
         write_local_tree(tmp_path, tree)
-    
+
     assert hfs.read_file(f"{root}/foo") == b"I am foo"
 
 
 @pytest.mark.parametrize("device", [False, True])
-def test_file_len(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool) -> None:
+def test_file_len(
+    fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bool
+) -> None:
     hfs = HybridFilesystemAPI(fs)
-    
+
     tree = {
         "foo": b"I'm twenty bytes!!!!",
     }
@@ -196,7 +210,7 @@ def test_file_len(fs: FilesystemAPI, tmp_path: Path, dev_tmpdir: str, device: bo
     else:
         root = str(tmp_path)
         write_local_tree(tmp_path, tree)
-    
+
     assert hfs.file_len(f"{root}/foo") == 20
 
 

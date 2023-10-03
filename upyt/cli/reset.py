@@ -7,7 +7,11 @@ import sys
 from argparse import ArgumentParser, Namespace
 
 from upyt.connection import Connection
-from upyt.upy_repl import expect, interrupt_and_enter_repl, soft_reset_directly_into_repl
+from upyt.upy_repl import (
+    expect,
+    interrupt_and_enter_repl,
+    soft_reset_directly_into_repl,
+)
 
 
 def add_arguments(parser: ArgumentParser) -> None:

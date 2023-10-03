@@ -20,30 +20,30 @@ def split_source(source: str) -> tuple[str, str]:
     """
     Given a commandline source name (e.g. '-', 'foo/bar' or ':foo/bar') split
     it into a (prefix_plus_dirname, name) pair.
-    
+
     Here prefix_plus_dirname contains the ':' if any plus the base directory
     name (e.g. 'foo/' in these examples).
-    
+
     Also normalises empty paths to "." and strips trailing slashes.
     """
     # You can never be sure there aren't Windows users about...
     source = source.replace("\\", "/")
-    
+
     prefix = ""
     if source.startswith(":"):
         prefix = ":"
         source = source[1:]
-    
+
     # Special case for empty string == cwd
     if source == "":
         source = "."
-    
+
     # Normalize-out trailing slashes (special case for root dir)
     if source != "/":
         source = source.rstrip("/")
-    
+
     base_dir, slash, name = source.rpartition("/")
-    
+
     return (prefix + base_dir + slash, name)
 
 
@@ -65,11 +65,11 @@ def read_sources(
     #
     # [(base_dir, name), ...]
     sources = [split_source(source) for source in sources]
-    
+
     # (Potentially) recursively iterate over the sources
     while sources:
         base_dir, name = sources.pop()
-        
+
         path = base_dir + name
         if hfs.get_type(path).is_dir():
             if recursive:
@@ -95,7 +95,7 @@ def write_single_file_to_destination(
     Otherwise, the file is copied to the given name.
     """
     filename, data = file
-    
+
     if hfs.get_type(destination).is_dir():
         hfs.write_file(f"{destination}/{filename}", data)
     else:
@@ -119,6 +119,7 @@ def write_multiple_files_to_existing_directory(
         else:
             hfs.write_file(f"{destination}/{filename}", data)
 
+
 def write_single_directory_to_non_existing_destination(
     hfs: HybridFilesystemAPI,
     files: Iterable[tuple[str, bytes]],
@@ -136,12 +137,18 @@ def write_single_directory_to_non_existing_destination(
         else:
             hfs.write_file(f"{destination}/{filename}", data)
 
-def cp(hfs: HybridFilesystemAPI, sources: list[str], destination: str, recursive: bool=False):
+
+def cp(
+    hfs: HybridFilesystemAPI,
+    sources: list[str],
+    destination: str,
+    recursive: bool = False,
+):
     """
     Copy files between the host and MicroPython device.
-    
-    Paths starting with ":" are device paths, those without are host paths. 
-    
+
+    Paths starting with ":" are device paths, those without are host paths.
+
     Copying semantics approximately follow the POSIX ``cp`` command.
     """
     files = read_sources(hfs, sources, recursive)
@@ -152,7 +159,6 @@ def cp(hfs: HybridFilesystemAPI, sources: list[str], destination: str, recursive
         write_single_directory_to_non_existing_destination(hfs, files, destination)
     else:
         write_multiple_files_to_existing_directory(hfs, files, destination)
-
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -186,8 +192,8 @@ def main(args: Namespace):
         interrupt_and_enter_repl(conn)
         with upy_filesystem(conn) as fs:
             if not (
-                any(source.startswith(":") for source in args.source) or
-                args.destination.startswith(":")
+                any(source.startswith(":") for source in args.source)
+                or args.destination.startswith(":")
             ):
                 print(
                     "warning: neither source nor destination on device (i.e. starting with ':')",

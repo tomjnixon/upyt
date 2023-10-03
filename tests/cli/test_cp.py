@@ -313,196 +313,197 @@ class TestWriteSingleFileToDestination:
 
 
 class TestWriteMultipleFilesToExistingDirectory:
+    def test_local(self, hfs: HybridFilesystemAPI, tmp_path: Path) -> None:
+        write_multiple_files_to_existing_directory(
+            hfs,
+            [
+                ("foo", b"I am foo"),
+                ("bar", None),
+                ("bar/baz", b"I am baz"),
+            ],
+            str(tmp_path),
+        )
+        assert read_local_tree(tmp_path) == {
+            "foo": b"I am foo",
+            "bar": {
+                "baz": b"I am baz",
+            },
+        }
 
-   def test_local(self, hfs: HybridFilesystemAPI, tmp_path: Path) -> None:
-       write_multiple_files_to_existing_directory(
-           hfs,
-           [
-               ("foo", b"I am foo"),
-               ("bar", None),
-               ("bar/baz", b"I am baz"),
-           ],
-           str(tmp_path)
-       )
-       assert read_local_tree(tmp_path) == {
-           "foo": b"I am foo",
-           "bar": {
-               "baz": b"I am baz",
-           },
-       }
-
-   def test_device(self, fs: FilesystemAPI, hfs: HybridFilesystemAPI, dev_tmpdir: str) -> None:
-       write_multiple_files_to_existing_directory(
-           hfs,
-           [
-               ("foo", b"I am foo"),
-               ("bar", None),
-               ("bar/baz", b"I am baz"),
-           ],
-           f":{dev_tmpdir}",
-       )
-       assert read_device_tree(fs, dev_tmpdir) == {
-           "foo": b"I am foo",
-           "bar": {
-               "baz": b"I am baz",
-           },
-       }
+    def test_device(
+        self, fs: FilesystemAPI, hfs: HybridFilesystemAPI, dev_tmpdir: str
+    ) -> None:
+        write_multiple_files_to_existing_directory(
+            hfs,
+            [
+                ("foo", b"I am foo"),
+                ("bar", None),
+                ("bar/baz", b"I am baz"),
+            ],
+            f":{dev_tmpdir}",
+        )
+        assert read_device_tree(fs, dev_tmpdir) == {
+            "foo": b"I am foo",
+            "bar": {
+                "baz": b"I am baz",
+            },
+        }
 
 
 class TestWriteSingleDirectoryToNonExistingDestination:
+    def test_local(self, hfs: HybridFilesystemAPI, tmp_path: Path) -> None:
+        write_single_directory_to_non_existing_destination(
+            hfs,
+            [
+                ("bar", None),
+                ("bar/baz", b"I am baz"),
+            ],
+            str(tmp_path / "foo"),
+        )
+        assert read_local_tree(tmp_path) == {
+            "foo": {
+                "baz": b"I am baz",
+            },
+        }
 
-   def test_local(self, hfs: HybridFilesystemAPI, tmp_path: Path) -> None:
-       write_single_directory_to_non_existing_destination(
-           hfs,
-           [
-               ("bar", None),
-               ("bar/baz", b"I am baz"),
-           ],
-           str(tmp_path / "foo")
-       )
-       assert read_local_tree(tmp_path) == {
-           "foo": {
-               "baz": b"I am baz",
-           },
-       }
-
-   def test_device(self, fs: FilesystemAPI, hfs: HybridFilesystemAPI, dev_tmpdir: str) -> None:
-       write_single_directory_to_non_existing_destination(
-           hfs,
-           [
-               ("bar", None),
-               ("bar/baz", b"I am baz"),
-           ],
-           f":{dev_tmpdir}/foo",
-       )
-       assert read_device_tree(fs, dev_tmpdir) == {
-           "foo": {
-               "baz": b"I am baz",
-           },
-       }
+    def test_device(
+        self, fs: FilesystemAPI, hfs: HybridFilesystemAPI, dev_tmpdir: str
+    ) -> None:
+        write_single_directory_to_non_existing_destination(
+            hfs,
+            [
+                ("bar", None),
+                ("bar/baz", b"I am baz"),
+            ],
+            f":{dev_tmpdir}/foo",
+        )
+        assert read_device_tree(fs, dev_tmpdir) == {
+            "foo": {
+                "baz": b"I am baz",
+            },
+        }
 
 
 class TestCp:
+    @pytest.mark.parametrize("device_source", [False, True])
+    @pytest.mark.parametrize("device_destination", [False, True])
+    @pytest.mark.parametrize("destination_exists", [False, True])
+    @pytest.mark.parametrize("recursive", [False, True])
+    def test_single_file(
+        self,
+        fs: FilesystemAPI,
+        hfs: HybridFilesystemAPI,
+        tmp_path: Path,
+        dev_tmpdir: str,
+        device_source: bool,
+        device_destination: bool,
+        destination_exists: bool,
+        recursive: bool,
+    ):
+        if device_source:
+            fs.write_file(f"{dev_tmpdir}/foo", b"I am foo")
+            sources = [f":{dev_tmpdir}/foo"]
+        else:
+            (tmp_path / "foo").write_bytes(b"I am foo")
+            sources = [str(tmp_path / "foo")]
 
-   @pytest.mark.parametrize("device_source", [False, True])
-   @pytest.mark.parametrize("device_destination", [False, True])
-   @pytest.mark.parametrize("destination_exists", [False, True])
-   @pytest.mark.parametrize("recursive", [False, True])
-   def test_single_file(
-       self,
-       fs: FilesystemAPI,
-       hfs: HybridFilesystemAPI,
-       tmp_path: Path,
-       dev_tmpdir: str,
-       device_source: bool,
-       device_destination: bool,
-       destination_exists: bool,
-       recursive: bool,
-   ):
-       if device_source:
-           fs.write_file(f"{dev_tmpdir}/foo", b"I am foo")
-           sources = [f":{dev_tmpdir}/foo"]
-       else:
-           (tmp_path / "foo").write_bytes(b"I am foo")
-           sources = [str(tmp_path / "foo")]
+        if device_destination:
+            if destination_exists:
+                fs.write_file(f"{dev_tmpdir}/bar", b"Old content...")
+            destination = f":{dev_tmpdir}/bar"
+        else:
+            if destination_exists:
+                (tmp_path / "bar").write_bytes(b"Old content...")
+            destination = str(tmp_path / "bar")
 
-       if device_destination:
-           if destination_exists:
-               fs.write_file(f"{dev_tmpdir}/bar", b"Old content...")
-           destination = f":{dev_tmpdir}/bar"
-       else:
-           if destination_exists:
-               (tmp_path / "bar").write_bytes(b"Old content...")
-           destination = str(tmp_path / "bar")
+        cp(hfs, sources, destination, recursive)
 
-       cp(hfs, sources, destination, recursive)
+        if device_destination:
+            assert fs.read_file(f"{dev_tmpdir}/bar") == b"I am foo"
+        else:
+            assert (tmp_path / "bar").read_bytes() == b"I am foo"
 
-       if device_destination:
-           assert fs.read_file(f"{dev_tmpdir}/bar") == b"I am foo"
-       else:
-           assert (tmp_path / "bar").read_bytes() == b"I am foo"
+    @pytest.mark.parametrize("device_source", [False, True])
+    @pytest.mark.parametrize("device_destination", [False, True])
+    def test_dir_to_non_existant_location(
+        self,
+        fs: FilesystemAPI,
+        hfs: HybridFilesystemAPI,
+        tmp_path: Path,
+        dev_tmpdir: str,
+        device_source: bool,
+        device_destination: bool,
+    ):
+        if device_source:
+            write_device_tree(fs, dev_tmpdir, {"foo": {"bar": b"I am bar"}})
+            sources = [f":{dev_tmpdir}/foo"]
+        else:
+            write_local_tree(tmp_path, {"foo": {"bar": b"I am bar"}})
+            sources = [str(tmp_path / "foo")]
 
-   @pytest.mark.parametrize("device_source", [False, True])
-   @pytest.mark.parametrize("device_destination", [False, True])
-   def test_dir_to_non_existant_location(
-       self,
-       fs: FilesystemAPI,
-       hfs: HybridFilesystemAPI,
-       tmp_path: Path,
-       dev_tmpdir: str,
-       device_source: bool,
-       device_destination: bool,
-   ):
-       if device_source:
-           write_device_tree(fs, dev_tmpdir, {"foo": {"bar": b"I am bar"}})
-           sources = [f":{dev_tmpdir}/foo"]
-       else:
-           write_local_tree(tmp_path, {"foo": {"bar": b"I am bar"}})
-           sources = [str(tmp_path / "foo")]
+        if device_destination:
+            destination = f":{dev_tmpdir}/baz"
+        else:
+            destination = str(tmp_path / "baz")
 
-       if device_destination:
-           destination = f":{dev_tmpdir}/baz"
-       else:
-           destination = str(tmp_path / "baz")
+        cp(hfs, sources, destination, recursive=True)
 
-       cp(hfs, sources, destination, recursive=True)
+        if device_destination:
+            tree = read_device_tree(fs, dev_tmpdir)
+        else:
+            tree = read_local_tree(tmp_path)
+        assert tree["baz"] == {"bar": b"I am bar"}
 
-       if device_destination:
-           tree = read_device_tree(fs, dev_tmpdir)
-       else:
-           tree = read_local_tree(tmp_path)
-       assert tree["baz"] == {"bar": b"I am bar"}
+    @pytest.mark.parametrize("device_destination", [False, True])
+    def test_multiple_sources(
+        self,
+        fs: FilesystemAPI,
+        hfs: HybridFilesystemAPI,
+        tmp_path: Path,
+        dev_tmpdir: str,
+        device_destination: bool,
+    ):
+        write_device_tree(
+            fs,
+            dev_tmpdir,
+            {
+                "dev_file": b"I am dev_file",
+                "dev_dir": {"bar": b"I am dev_dir bar"},
+            },
+        )
+        write_local_tree(
+            tmp_path,
+            {
+                "loc_file": b"I am loc_file",
+                "loc_dir": {"bar": b"I am loc_dir bar"},
+            },
+        )
+        sources = [
+            str(tmp_path / "loc_file"),
+            str(tmp_path / "loc_dir"),
+            f":{dev_tmpdir}/dev_file",
+            f":{dev_tmpdir}/dev_dir",
+        ]
 
-   @pytest.mark.parametrize("device_destination", [False, True])
-   def test_multiple_sources(
-       self,
-       fs: FilesystemAPI,
-       hfs: HybridFilesystemAPI,
-       tmp_path: Path,
-       dev_tmpdir: str,
-       device_destination: bool,
-   ):
-       write_device_tree(
-           fs,
-           dev_tmpdir,
-           {
-               "dev_file": b"I am dev_file",
-               "dev_dir": {"bar": b"I am dev_dir bar"},
-           },
-       )
-       write_local_tree(
-           tmp_path,
-           {
-               "loc_file": b"I am loc_file",
-               "loc_dir": {"bar": b"I am loc_dir bar"},
-           },
-       )
-       sources = [
-           str(tmp_path / "loc_file"),
-           str(tmp_path / "loc_dir"),
-           f":{dev_tmpdir}/dev_file",
-           f":{dev_tmpdir}/dev_dir",
-       ]
+        if device_destination:
+            fs.mkdir(f"{dev_tmpdir}/baz")
+            destination = f":{dev_tmpdir}/baz"
+        else:
+            (tmp_path / "baz").mkdir()
+            destination = str(tmp_path / "baz")
 
-       if device_destination:
-           fs.mkdir(f"{dev_tmpdir}/baz")
-           destination = f":{dev_tmpdir}/baz"
-       else:
-           (tmp_path / "baz").mkdir()
-           destination = str(tmp_path / "baz")
+        cp(hfs, sources, destination, recursive=True)
 
-       cp(hfs, sources, destination, recursive=True)
-
-       if device_destination:
-           tree = read_device_tree(fs, f"{dev_tmpdir}/baz")
-       else:
-           tree = read_local_tree(tmp_path / "baz")
-       assert tree == {
-           "dev_file": b"I am dev_file",
-           "dev_dir": {"bar": b"I am dev_dir bar"},
-           "loc_file": b"I am loc_file",
-           "loc_dir": {"bar": b"I am loc_dir bar"},
-       }
+        if device_destination:
+            tree = read_device_tree(fs, f"{dev_tmpdir}/baz")
+        else:
+            tree = read_local_tree(tmp_path / "baz")
+        assert tree == {
+            "dev_file": b"I am dev_file",
+            "dev_dir": {"bar": b"I am dev_dir bar"},
+            "loc_file": b"I am loc_file",
+            "loc_dir": {"bar": b"I am loc_dir bar"},
+        }
 
 
 @pytest.mark.parametrize(
@@ -543,7 +544,7 @@ def test_equivalence_with_posix_cp(
     exp_fail: bool,
 ) -> None:
     hfs = HybridFilesystemAPI(Mock())
-    
+
     tree = {
         "file": b"I am a file",
         "other_file": b"I am another file",
@@ -565,20 +566,23 @@ def test_equivalence_with_posix_cp(
     except Exception as exc:
         print(exc)
         this_success = False
-    
+
     # Part two: See what cp does
     posix_dir = tmp_path / "posix_dir"
     write_local_tree(posix_dir, tree)
-    posix_success = run(
-        (
-            ["cp"] +
-            (["-r"] if recursive else []) +
-            [s.replace("$", str(posix_dir)) for s in sources] +
-            [destination.replace("$", str(posix_dir))]
-        ),
-    ).returncode == 0
+    posix_success = (
+        run(
+            (
+                ["cp"]
+                + (["-r"] if recursive else [])
+                + [s.replace("$", str(posix_dir)) for s in sources]
+                + [destination.replace("$", str(posix_dir))]
+            ),
+        ).returncode
+        == 0
+    )
     posix_tree = read_local_tree(posix_dir)
-    
+
     # Part three: check for equivalence
     assert this_success is posix_success
     assert this_success is (not exp_fail)
