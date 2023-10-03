@@ -109,7 +109,7 @@ def enumerate_local_files(host_dir: Path, exclude: list[str] = []) -> Iterator[P
     * ``/foo`` -- A file or directory called foo in the root of the specified
       directory.
     """
-    excluded = set()
+    excluded: set[Path] = set()
     for exclusion in exclude:
         if exclusion.startswith("/"):
             # Treat rooted exclusions as relative to root dir

@@ -4,7 +4,7 @@ import pytest
 
 import time
 
-from serial import Serial
+from upyt.connection import Connection
 
 from unittest.mock import Mock
 
@@ -59,7 +59,7 @@ class TestExpectEndswIth:
 
 
 class TestInterruptAndEnterRepl:
-    def test_no_contention_next_prompt_unread(self, ser: Serial) -> None:
+    def test_no_contention_next_prompt_unread(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         # Confirm the REPL is working and that we've gone back to a prompt
@@ -71,7 +71,7 @@ class TestInterruptAndEnterRepl:
         # NB: newline and prompt (>>>) still left in buffer
         assert interrupt_and_enter_repl(ser) == b"\r\n>>> "
 
-    def test_no_contention_next_prompt_read(self, ser: Serial) -> None:
+    def test_no_contention_next_prompt_read(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         # Confirm the REPL is working and that we've gone back to a prompt
@@ -83,7 +83,7 @@ class TestInterruptAndEnterRepl:
         # NB: nothing left in buffer
         assert interrupt_and_enter_repl(ser) == b""
 
-    def test_interrupt_process(self, ser: Serial) -> None:
+    def test_interrupt_process(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         before = time.time()
@@ -111,7 +111,7 @@ class TestInterruptAndEnterRepl:
             b"KeyboardInterrupt: "
         )
 
-    def test_interrupt_process_custom_message(self, ser: Serial) -> None:
+    def test_interrupt_process_custom_message(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         before = time.time()
@@ -139,7 +139,7 @@ class TestInterruptAndEnterRepl:
 
         assert out == (b"stopped\r\n" b"dead")
 
-    def test_double_interrupt_process(self, ser: Serial) -> None:
+    def test_double_interrupt_process(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         before = time.time()
@@ -175,7 +175,7 @@ class TestInterruptAndEnterRepl:
 
 
 class TestPasteExec:
-    def test_basic_functionality(self, ser: Serial) -> None:
+    def test_basic_functionality(self, ser: Connection) -> None:
         paste_exec(
             ser,
             (
@@ -187,7 +187,7 @@ class TestPasteExec:
         expect(ser, "Hello\r\nWorld\r\n£1.23\r\n".encode("utf-8"))  # Output
         expect(ser, b">>> ")  # New prompt
 
-    def test_flow_control(self, ser: Serial) -> None:
+    def test_flow_control(self, ser: Connection) -> None:
         # The following snippet is long enough that not waiting for the remote
         # device to handle it will inevetably result in it loosing some bytes
         paste_exec(ser, f"print({' + '.join(map(str, range(100)))})\n" * 100)
@@ -195,7 +195,7 @@ class TestPasteExec:
         expect(ser, b">>> ")  # New prompt
 
 
-def test_raw_mode(ser: Serial) -> None:
+def test_raw_mode(ser: Connection) -> None:
     with raw_mode(ser):
         # Check we're actually in raw mode
         ser.write(b"print('hello')" b"\x04")  # (Ctrl+D)
@@ -209,7 +209,7 @@ def test_raw_mode(ser: Serial) -> None:
 
 
 class TestRawPasteExec:
-    def test_basic_functionality_no_exception(self, ser: Serial) -> None:
+    def test_basic_functionality_no_exception(self, ser: Connection) -> None:
         with raw_mode(ser):
             out, err = raw_paste_exec(
                 ser,
@@ -223,7 +223,7 @@ class TestRawPasteExec:
             assert err == ""
             assert out == ("hello\r\n" "world!\r\n" "goodbye!\r\n")
 
-    def test_basic_functionality_with_exception(self, ser: Serial) -> None:
+    def test_basic_functionality_with_exception(self, ser: Connection) -> None:
         with raw_mode(ser):
             out, err = raw_paste_exec(
                 ser,
@@ -241,7 +241,7 @@ class TestRawPasteExec:
                 "Exception: Failure!\r\n"
             )
 
-    def test_input_flow_control_required(self, ser: Serial) -> None:
+    def test_input_flow_control_required(self, ser: Connection) -> None:
         with raw_mode(ser):
             out, err = raw_paste_exec(
                 ser, f"print({'+'.join('1' for _ in range(1000))})"
@@ -249,7 +249,7 @@ class TestRawPasteExec:
             assert err == ""
             assert out == "1000\r\n"
 
-    def test_input_flow_control_size_multiple_of_window(self, ser: Serial) -> None:
+    def test_input_flow_control_size_multiple_of_window(self, ser: Connection) -> None:
         # XXX: Hard coded based on what the Pi Pico defaults to...
         window_size = 128
 
@@ -258,13 +258,15 @@ class TestRawPasteExec:
             assert err == ""
             assert out == "123\r\n"
 
-    def test_disallow_ctrl_d_in_source(self, ser: Serial) -> None:
+    def test_disallow_ctrl_d_in_source(self, ser: Connection) -> None:
         with raw_mode(ser):
             with pytest.raises(ValueError):
                 raw_paste_exec(ser, "oh noes\x04")
 
 
-def quick_and_dirty_write_file(ser: Serial, file: str, value: Optional[str]) -> None:
+def quick_and_dirty_write_file(
+    ser: Connection, file: str, value: Optional[str]
+) -> None:
     interrupt_and_enter_repl(ser)
 
     with raw_mode(ser):
@@ -299,7 +301,7 @@ def quick_and_dirty_write_file(ser: Serial, file: str, value: Optional[str]) -> 
             )
 
 
-def quick_and_dirty_read_file(ser: Serial, file: str) -> Optional[str]:
+def quick_and_dirty_read_file(ser: Connection, file: str) -> Optional[str]:
     interrupt_and_enter_repl(ser)
 
     with raw_mode(ser):
@@ -320,7 +322,7 @@ def quick_and_dirty_read_file(ser: Serial, file: str) -> Optional[str]:
 
 
 @contextmanager
-def quick_and_dirty_override_file(ser: Serial, file: str, content: Optional[str]):
+def quick_and_dirty_override_file(ser: Connection, file: str, content: Optional[str]):
     original = quick_and_dirty_read_file(ser, file)
     quick_and_dirty_write_file(ser, file, content)
     try:
@@ -339,7 +341,7 @@ def quick_and_dirty_override_file(ser: Serial, file: str, content: Optional[str]
     ],
 )
 def test_override_file(
-    ser: Serial,
+    ser: Connection,
     original: Optional[str],
     replacement: Optional[str],
 ) -> None:
@@ -352,7 +354,7 @@ def test_override_file(
 
 
 class TestSoftResetDirectlyIntoRepl:
-    def test_interrupt_existing_process(self, ser: Serial) -> None:
+    def test_interrupt_existing_process(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         # Set the thing off sleeping
@@ -361,7 +363,7 @@ class TestSoftResetDirectlyIntoRepl:
 
         assert soft_reset_directly_into_repl(ser) == ""
 
-    def test_skips_main_py(self, ser: Serial) -> None:
+    def test_skips_main_py(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         with quick_and_dirty_override_file(
@@ -374,7 +376,7 @@ class TestSoftResetDirectlyIntoRepl:
             ser.write(b"\r")
             expect(ser, b"\r\n>>> ")
 
-    def test_captures_boot_py_output(self, ser: Serial) -> None:
+    def test_captures_boot_py_output(self, ser: Connection) -> None:
         interrupt_and_enter_repl(ser)
 
         with quick_and_dirty_override_file(ser, "boot.py", "print('booted!')"):

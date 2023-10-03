@@ -452,6 +452,7 @@ class TestCp:
             tree = read_device_tree(fs, dev_tmpdir)
         else:
             tree = read_local_tree(tmp_path)
+        assert isinstance(tree, dict)
         assert tree["baz"] == {"bar": b"I am bar"}
 
     @pytest.mark.parametrize("device_destination", [False, True])

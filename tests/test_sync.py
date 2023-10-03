@@ -185,11 +185,12 @@ class TestSyncToDevice:
         fs: FilesystemAPI,
         dev_tmpdir_with_id: str,
         tmp_path: Path,
-        tree: dict[str, Any] | bytes,
+        tree: dict[str, Any],
     ) -> None:
         write_local_tree(tmp_path, tree)
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id)
         device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
 
         # Check that the cache exactly reflects the on-device state
         assert read_local_tree(tmp_path) == dict(
@@ -221,6 +222,7 @@ class TestSyncToDevice:
         )
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id, exclude=["*.exclude"])
         device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
 
         # Check the input tree has been written exactly
         device_tree.pop(".upyt_id.txt")
@@ -244,6 +246,7 @@ class TestSyncToDevice:
         write_local_tree(tmp_path, tree)
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id)
         device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
 
         # Check that the cache exactly reflects the on-device state
         assert read_local_tree(tmp_path) == dict(
@@ -266,6 +269,7 @@ class TestSyncToDevice:
 
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id)
         device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
 
         # Check that the cache reflects the values we just uploaded (i.e.
         # nothing!)
@@ -298,6 +302,7 @@ class TestSyncToDevice:
 
         # Check as expected
         device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
         device_tree.pop(".upyt_id.txt")
         assert device_tree == tree
 
@@ -310,6 +315,7 @@ class TestSyncToDevice:
 
         # Check types changed
         device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
         device_tree.pop(".upyt_id.txt")
         assert device_tree == new_tree
 
@@ -325,9 +331,9 @@ class TestSyncToDevice:
         write_local_tree(tmp_path, {"file": b"Bar" + (b"X" * 1024)})
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id)
 
-        assert read_device_tree(fs, dev_tmpdir_with_id).pop("file") == (
-            b"Bar" + (b"X" * 1024)
-        )
+        device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
+        assert device_tree.pop("file") == (b"Bar" + (b"X" * 1024))
 
     def test_update_content_catch_stale_cache_file(
         self,
@@ -347,7 +353,9 @@ class TestSyncToDevice:
         write_local_tree(tmp_path, {"file": b"Something"})
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id)
 
-        assert read_device_tree(fs, dev_tmpdir_with_id).pop("file") == b"Something"
+        device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
+        assert device_tree.pop("file") == b"Something"
 
     def test_force_enumerate_files(
         self,
@@ -370,7 +378,9 @@ class TestSyncToDevice:
 
         # Force leads to file existing
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id, force_enumerate_files=True)
-        assert read_device_tree(fs, dev_tmpdir_with_id).pop("file") == b"Something"
+        device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
+        assert device_tree.pop("file") == b"Something"
 
     def test_update_content_catch_stale_cache_value(
         self,
@@ -392,9 +402,9 @@ class TestSyncToDevice:
         write_local_tree(tmp_path, {"file": b"Something different"})
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id)
 
-        assert read_device_tree(fs, dev_tmpdir_with_id).pop("file") == (
-            b"Something different"
-        )
+        device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
+        assert device_tree.pop("file") == (b"Something different")
 
     def test_force_safe_update(
         self,
@@ -415,17 +425,17 @@ class TestSyncToDevice:
 
         # Without safe mode, the corrupt cache should lead to a corrupt file
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id)
-        assert read_device_tree(fs, dev_tmpdir_with_id).pop("file") == (
-            b"Entirely udifferent"  # Corrupt!
-        )
+        device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
+        assert device_tree.pop("file") == (b"Entirely udifferent")  # Corrupt!
 
         # With safe mode, the corrupt cache should be caught and the correct
         # file written
         (cache_dir / "file").write_bytes(b"Something else")
         sync_to_device(fs, tmp_path, dev_tmpdir_with_id, force_safe_update=True)
-        assert read_device_tree(fs, dev_tmpdir_with_id).pop("file") == (
-            b"Something different"
-        )
+        device_tree = read_device_tree(fs, dev_tmpdir_with_id)
+        assert isinstance(device_tree, dict)
+        assert device_tree.pop("file") == (b"Something different")
 
     def test_progress_reporting(
         self,
@@ -441,12 +451,14 @@ class TestSyncToDevice:
         # Should have notified on every change
         assert len(mock.mock_calls) == 2
         mock.assert_has_calls(
-            call(
-                Path(name),
-                {Path("a"), Path("b")},
-                {Path("a"), Path("b")},
-            )
-            for name in ["a", "b"]
+            [
+                call(
+                    Path(name),
+                    {Path("a"), Path("b")},
+                    {Path("a"), Path("b")},
+                )
+                for name in ["a", "b"]
+            ]
         )
 
         # Minor change
@@ -458,10 +470,12 @@ class TestSyncToDevice:
         # Should have notified on only differences
         assert len(mock.mock_calls) == 2
         mock.assert_has_calls(
-            call(
-                Path(name),
-                {Path("b"), Path("c")},
-                {Path("a"), Path("b"), Path("c")},
-            )
-            for name in ["b", "c"]
+            [
+                call(
+                    Path(name),
+                    {Path("b"), Path("c")},
+                    {Path("a"), Path("b"), Path("c")},
+                )
+                for name in ["b", "c"]
+            ]
         )

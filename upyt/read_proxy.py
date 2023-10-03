@@ -1,4 +1,6 @@
 """
+For internal use.
+
 This module contains machinery for producing 'read proxies' which sit between
 stdin and the :py:mod:`upyt.upy_terminal` terminal to handle things like
 keyboard shortcuts (e.g. to quit the terminal) and intercept bracketed paste
@@ -14,7 +16,7 @@ character) if they are waiting for further input.
 """
 
 
-from typing import TextIO, Iterable, Iterator, Callable
+from typing import cast, TextIO, Iterable, Iterator, Callable, AnyStr, BinaryIO, Any
 
 from itertools import takewhile, islice
 
@@ -29,7 +31,7 @@ def replace(find: str, replace: str) -> StreamFilter:
     unambiguously match or not.
     """
 
-    def replacer(sequence: Iterator[str | None]) -> Iterator[str | None]:
+    def replacer(sequence: Iterable[str | None]) -> Iterator[str | None]:
         # We may need to buffer the input to decide if what we've read matches the
         # find sequence
         input_buffer = ""
@@ -69,7 +71,7 @@ def match(find: str, callback: Callable[[], None]) -> StreamFilter:
     callback throws an exception, the matched characters will never be emitted.
     """
 
-    def matcher(sequence: Iterator[str | None]) -> Iterator[str | None]:
+    def matcher(sequence: Iterable[str | None]) -> Iterator[str | None]:
         # We may need to buffer the input to decide if what we've read matches the
         # find sequence
         input_buffer = ""
@@ -120,8 +122,11 @@ class ReadProxy(TextIO):
             char = self._readable.read(1)
             yield char or None
 
-    def read(self, length=None) -> bytes:
-        iterator = takewhile(lambda b: b is not None, self._iterator)
+    def read(self, length=None) -> str:
+        iterator = cast(
+            Iterable[str],
+            takewhile(lambda b: b is not None, self._iterator),
+        )
         if length is not None:
             iterator = islice(iterator, length)
 
@@ -130,5 +135,88 @@ class ReadProxy(TextIO):
     def fileno(self) -> int:
         return self._readable.fileno()
 
-    def seek(self, *_, **__) -> None:
+    # This class is only a bare-bones look-alike for a readable file for
+    # internal use so all of the following are not implemented...
+
+    @property
+    def mode(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError()
+
+    def close(self) -> None:
+        raise NotImplementedError()
+
+    @property
+    def closed(self) -> bool:
+        raise NotImplementedError()
+
+    def flush(self) -> None:
+        raise NotImplementedError()
+
+    def isatty(self) -> bool:
+        raise NotImplementedError()
+
+    def readable(self) -> bool:
+        raise NotImplementedError()
+
+    def readline(self, limit: int = -1) -> AnyStr:
+        raise NotImplementedError()
+
+    def readlines(self, hint: int = -1) -> list[AnyStr]:
+        raise NotImplementedError()
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        raise NotImplementedError()
+
+    def seekable(self) -> bool:
+        raise NotImplementedError()
+
+    def tell(self) -> int:
+        raise NotImplementedError()
+
+    def truncate(self, size: int | None = None) -> int:
+        raise NotImplementedError()
+
+    def writable(self) -> bool:
+        raise NotImplementedError()
+
+    def write(self, s: AnyStr) -> int:
+        raise NotImplementedError()
+
+    def writelines(self, lines: Iterable[AnyStr]) -> None:
+        raise NotImplementedError()
+
+    def __exit__(self, type, value, traceback) -> None:
+        raise NotImplementedError()
+
+    @property
+    def buffer(self) -> BinaryIO:
+        raise NotImplementedError()
+
+    @property
+    def encoding(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def errors(self) -> str | None:
+        raise NotImplementedError()
+
+    @property
+    def line_buffering(self) -> bool:
+        raise NotImplementedError()
+
+    @property
+    def newlines(self) -> Any:
+        raise NotImplementedError()
+
+    def __enter__(self) -> "TextIO":
+        raise NotImplementedError()
+
+    def __iter__(self) -> Iterator[str]:
+        raise NotImplementedError()
+
+    def __next__(self) -> str:
         raise NotImplementedError()

@@ -4,7 +4,7 @@ An implementation of a serial terminal for micropython devices.
 **Currently this implementation is Unix-like only...**
 """
 
-from typing import TextIO, Callable
+from typing import TextIO, Callable, Iterator, Any
 
 import os
 import sys
@@ -72,7 +72,7 @@ def terminal_mode(terminal: TextIO = sys.stdin):
 
 
 @contextmanager
-def bracketed_paste_mode(stdout: TextIO = sys.stdout) -> None:
+def bracketed_paste_mode(stdout: TextIO = sys.stdout) -> Iterator[None]:
     """
     Context manager which enables bracketed paste mode in the terminal on entry
     and disables it again on exit.
@@ -304,6 +304,7 @@ def serial_terminal(
         the top left, sending a 'return' keypress to cause a new prompt to be
         printed.
     """
+    paste_mode_context_manager: Any
     if automatic_paste_mode:
         paste_mode_context_manager = bracketed_paste_mode(stdout)
     else:

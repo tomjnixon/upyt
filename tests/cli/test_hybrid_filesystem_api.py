@@ -1,5 +1,7 @@
 import pytest
 
+from typing import Any
+
 from pathlib import Path
 
 from upyt.upy_fs import FilesystemAPI, PathType
@@ -64,7 +66,7 @@ def test_remove_recursive(
 ) -> None:
     hfs = HybridFilesystemAPI(fs)
 
-    tree = {
+    tree: dict[str, Any] | bytes = {
         "file": b"I am a file",
         "empty_dir": {},
         "full_dir": {"foo": b"I am foo", "bar": {}},
@@ -119,7 +121,7 @@ def test_rename(
 ) -> None:
     hfs = HybridFilesystemAPI(fs)
 
-    tree = {
+    tree: dict[str, Any] | bytes = {
         "a": b"I am A",
         "overwrite_with_a": b"I am to be overwritten",
         "b": b"I am B",

@@ -28,7 +28,7 @@ from upyt.connection import Connection
 
 
 @contextmanager
-def upy_filesystem(conn: Connection) -> "FilesystemAPI":
+def upy_filesystem(conn: Connection) -> Iterator["FilesystemAPI"]:
     with raw_mode(conn):
         yield FilesystemAPI(conn)
 
@@ -71,10 +71,10 @@ def data_to_writes(data: bytes, block_size: int = 512) -> Iterator[tuple[str, in
 
 
 def combine_sm_operations(
-    operations: Iterator[tuple[str, int, int, int, int]],
+    operations: Iterable[tuple[str, int, int, int, int]],
     equal_overhead: int = 0,
     seek_overhead: int = 0,
-) -> Iterator[tuple[str, int, int, int, int]]:
+) -> Iterator[tuple[str, int | None, int | None, int | None, int | None]]:
     """
     Filters/modifies a SequenceMatcher's opcodes sequence to leave only insert
     and equal operations (with all non-referenced data being implicitly
@@ -100,10 +100,10 @@ def combine_sm_operations(
     # with an equal (as opposed to the other way around which we do implement).
     cur_opcode_is_real = False
     cur_opecode = "insert"
-    cur_i1 = None
-    cur_i2 = None
-    cur_j1 = 0
-    cur_j2 = 0
+    cur_i1: int | None = None
+    cur_i2: int | None = None
+    cur_j1: int | None = 0
+    cur_j2: int | None = 0
 
     # The implicit index of the next value to read from the old input array
     # (i.e. for which no seek would be required).
@@ -221,10 +221,15 @@ def data_to_update_commands(
     read_offset = 0
     for operation, i1, i2, j1, j2 in operations:
         if operation in ("insert", "replace"):
+            assert j1 is not None
+            assert j2 is not None
             # NB: In the case of replace, we'll seek past the old content
             # when we next need read.
             yield from data_to_writes(new_content[j1:j2], block_size)
         elif operation == "equal":
+            assert i1 is not None
+            assert i2 is not None
+
             if hasher is not None:
                 hasher(old_content[i1:i2])
 
@@ -252,7 +257,7 @@ def batch_commands(
     never exceeds the given number of bytes touched or number of commands
     executed.
     """
-    this_batch = []
+    this_batch: list[str] = []
     this_batch_bytes = 0
     for command, num_bytes in command_iter:
         # If this command will not fit in the current batch, flush that batch
@@ -298,7 +303,7 @@ class FilesystemAPI:
     # Snippets which may be executed to define/import a useful function/module.
     #
     # {name: (script, dependencies), ...}
-    _DEFINITIONS = {
+    _DEFINITIONS: dict[str, tuple[str, list[str]]] = {
         "os": ("import os", []),
         "time": ("import time", []),
         "sha256": ("from hashlib import sha256", []),
@@ -458,7 +463,7 @@ class FilesystemAPI:
 
     def __init__(self, conn: Connection) -> None:
         self._conn = conn
-        self._defined = set()
+        self._defined: set[str] = set()
 
     def _ensure_defined(self, name: str) -> None:
         """
@@ -558,8 +563,8 @@ class FilesystemAPI:
         assert out == "", out
 
         self._ensure_defined("pns")
-        directories = []
-        files = []
+        directories: list[str] = []
+        files: list[str] = []
         for lst, name in [(directories, "d"), (files, "f")]:
             while True:
                 out, err = raw_paste_exec(self._conn, f"pns({name}, {block_size})")

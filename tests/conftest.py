@@ -1,5 +1,7 @@
 import pytest
 
+from typing import Iterator
+
 from upyt.connection import Connection
 from upyt.upy_fs import FilesystemAPI, upy_filesystem
 
@@ -21,19 +23,19 @@ def board(request):
 
 
 @pytest.fixture(scope="session")
-def ser(board) -> Connection:
+def ser(board) -> Iterator[Connection]:
     with Connection.from_specification(board) as ser:
         yield ser
 
 
 @pytest.fixture
-def fs(ser: Connection) -> FilesystemAPI:
+def fs(ser: Connection) -> Iterator[FilesystemAPI]:
     with upy_filesystem(ser) as fs:
         yield fs
 
 
 @pytest.fixture
-def dev_tmpdir(fs: FilesystemAPI) -> str:
+def dev_tmpdir(fs: FilesystemAPI) -> Iterator[str]:
     name = "/test"
     try:
         fs.remove_recursive(name)

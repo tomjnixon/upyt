@@ -44,7 +44,7 @@ def terminal(
     extra_exit_on: list[str] = [],
     extra_help: str = "",
     show_help: bool = True,
-) -> bytes:
+) -> str:
     """
     Run the terminal, returning the exit sequence used to exit it.
     """

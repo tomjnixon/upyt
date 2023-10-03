@@ -302,7 +302,7 @@ class TestDataToUpdateCommands:
         ]
 
     def test_hasher(self) -> None:
-        hashed = []
+        hashed: list[bytes] = []
 
         assert list(
             data_to_update_commands(

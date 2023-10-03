@@ -2,7 +2,7 @@
 Copy files and directories.
 """
 
-from typing import Iterator, Iterable
+from typing import Iterator, Iterable, cast
 
 import sys
 
@@ -64,18 +64,18 @@ def read_sources(
     # in the destination) and the rest.
     #
     # [(base_dir, name), ...]
-    sources = [split_source(source) for source in sources]
+    to_visit = [split_source(source) for source in sources]
 
     # (Potentially) recursively iterate over the sources
-    while sources:
-        base_dir, name = sources.pop()
+    while to_visit:
+        base_dir, name = to_visit.pop()
 
         path = base_dir + name
         if hfs.get_type(path).is_dir():
             if recursive:
                 directories, files = hfs.ls(path)
                 for subpath in directories + files:
-                    sources.append((base_dir, f"{name}/{subpath}"))
+                    to_visit.append((base_dir, f"{name}/{subpath}"))
                 yield (name, None)
             else:
                 raise RecursionNotAllowedError(base_dir + name)
@@ -104,7 +104,7 @@ def write_single_file_to_destination(
 
 def write_multiple_files_to_existing_directory(
     hfs: HybridFilesystemAPI,
-    files: Iterable[tuple[str, bytes]],
+    files: Iterable[tuple[str, bytes | None]],
     destination: str,
 ) -> None:
     """
@@ -122,7 +122,7 @@ def write_multiple_files_to_existing_directory(
 
 def write_single_directory_to_non_existing_destination(
     hfs: HybridFilesystemAPI,
-    files: Iterable[tuple[str, bytes]],
+    files: Iterable[tuple[str, bytes | None]],
     destination: str,
 ) -> None:
     """
@@ -153,7 +153,11 @@ def cp(
     """
     files = read_sources(hfs, sources, recursive)
     if len(sources) == 1 and not hfs.get_type(sources[0]).is_dir():
-        write_single_file_to_destination(hfs, next(files), destination)
+        write_single_file_to_destination(
+            hfs,
+            cast(tuple[str, bytes], next(files)),  # Is directory per test above
+            destination,
+        )
     elif len(sources) == 1 and not hfs.get_type(destination).is_dir():
         # NB: source is dir, as per the previous branch's test
         write_single_directory_to_non_existing_destination(hfs, files, destination)

@@ -3,7 +3,7 @@ Generic interface representing a connection to a MicroPython instance (e.g.
 serial port, subprocess (e.g. UNIX) or network).
 """
 
-from typing import Iterator
+from typing import cast, Iterator
 
 from contextlib import contextmanager
 
@@ -65,7 +65,7 @@ class Connection:
         """
         raise NotImplementedError()
 
-    def flush(self) -> int:
+    def flush(self) -> None:
         """
         Flush any buffered written bytes to the device.
         """
@@ -131,7 +131,8 @@ class SerialConnection(Connection):
     _ser: Serial
 
     def __init__(self, *args, timeout=1.0, **kwargs) -> None:
-        self._ser = Serial(*args, timeout=timeout, **kwargs)
+        kwargs["timeout"] = 1.0
+        self._ser = Serial(*args, **kwargs)
 
     def read(self, num_bytes: int) -> bytes:
         return self._ser.read(num_bytes)
@@ -146,7 +147,9 @@ class SerialConnection(Connection):
             return b""
 
     def write(self, data: bytes) -> int:
-        return self._ser.write(data)
+        # NB: Pyserial docs say this is always an int, even if its type
+        # signature doesn't...
+        return cast(int, self._ser.write(data))
 
     def flush(self) -> None:
         self._ser.flush()
@@ -163,7 +166,9 @@ class SerialConnection(Connection):
 
     @property
     def timeout(self) -> float:
-        return self._ser.timeout
+        # NB: Pyserial docs say this is always a float, even if its type
+        # signature doesn't...
+        return cast(float, self._ser.timeout)
 
     @timeout.setter
     def timeout(self, value: float) -> None:
