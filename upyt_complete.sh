@@ -61,7 +61,7 @@ _upyt() {
     CUR="${COMP_WORDS[COMP_CWORD]}"
     PREV="${COMP_WORDS[COMP_CWORD-1]}"
     
-    # Determine the subcommand in use
+    # Determine the subcommand in use (if any)
     SUBCOMMAND=""
     SUBCOMMAND_INDEX=0
     for i in `seq 1 $(($COMP_CWORD - 1))`; do
@@ -75,17 +75,32 @@ _upyt() {
         fi
     done
     
+    # Auto-complete subcommands
+    if [[ $CUR != -* ]] && [[ -z $SUBCOMMAND ]]; then
+        IFS=$'\n' COMPREPLY=($(compgen -W "$(_upyt_help_to_subcommands "$CMD")" -- "$CUR"))
+        return 0
+    fi
+    
+    # Auto-complete options (e.g. -f --foo)
+    if [[ $CUR == -* ]]; then
+        IFS=$'\n' COMPREPLY=($(compgen -W "$(_upyt_help_to_options "$CMD" "$SUBCOMMAND")" -- "$CUR"))
+        return 0
+    fi
+    
     # Determine the device name
     if [[ -n $SUBCOMMAND ]]; then
+        # Default to environment variable
         DEVICE="$UPYT_DEVICE"
         
-        # Scan for a -d/--device argument
+        # ...but scan for a -d/--device argument
         for i in `seq 1 $(($SUBCOMMAND_INDEX - 1))`; do
+            # --device=foo case
             if [[ ${COMP_WORDS[i-2]} == @(-d|--device) ]] && \
                [[ ${COMP_WORDS[i-1]} == = ]]; then
               DEVICE="${COMP_WORDS[i]}"
               break
             fi
+            # --device foo case
             if [[ ${COMP_WORDS[i-1]} == @(-d|--device) ]] && \
                [[ ${COMP_WORDS[i]} != = ]]; then
               DEVICE="${COMP_WORDS[i]}"
@@ -94,21 +109,11 @@ _upyt() {
         done
     fi
     
-    # Auto-complete subcommands
-    if [[ $CUR != -* ]] && [[ -z $SUBCOMMAND ]]; then
-        IFS=$'\n' COMPREPLY=($(compgen -W "$(_upyt_help_to_subcommands "$CMD")" -- "$CUR"))
-        return 0
-    fi
-    
-    # Auto-complete options
-    if [[ $CUR == -* ]]; then
-        IFS=$'\n' COMPREPLY=($(compgen -W "$(_upyt_help_to_options "$CMD" "$SUBCOMMAND")" -- "$CUR"))
-        return 0
-    fi
-    
-    # Auto-complete filenames (unless UPYT_NO_COMPLETE_PATHS is defined. Users
-    # may wish to use this to avoid tab-completion interrupting their running
-    # processes in order to run 'upyt ls'.
+    # Auto-complete all other arguments as filenames on the host and device.
+    #
+    # Since performing an 'ls' operation on a device will kill any running
+    # process, the UPYT_NO_COMPLETE_PATHS variable may be used to disable this
+    # feature.
     if [[ -z $UPYT_NO_COMPLETE_PATHS ]] && [[ -n $SUBCOMMAND ]]; then
         # Strip off any partially complete filenames from path so we can feed
         # it to 'ls'
