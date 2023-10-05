@@ -86,8 +86,9 @@ def add_arguments(parser: ArgumentParser) -> None:
         action="store_true",
         default=False,
         help="""
-            If given, reset the device before and after syncing. Otherwise, the
-            device will be left at the REPL.
+            If given, reset the device after syncing (e.g. so modules are
+            reloaded and new code runs). Otherwise, the device will be left at
+            the REPL following file sync.
         """,
     )
     parser.add_argument(
