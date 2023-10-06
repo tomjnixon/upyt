@@ -5,7 +5,7 @@ import os
 from importlib import import_module
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = ArgumentParser(
         description="""
             A multi-tool for programming and interacting with MicroPython
@@ -51,7 +51,7 @@ def main() -> None:
         command_module.add_arguments(subparser)
         subparser.set_defaults(cmd=command_module.main)
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.device is None:
         parser.error("--device is required if UPYT_DEVICE is not set")

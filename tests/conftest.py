@@ -51,3 +51,28 @@ def dev_tmpdir(fs: FilesystemAPI) -> Iterator[str]:
             fs.remove_recursive(name)
         except OSError:
             pass
+
+
+@pytest.fixture
+def dev_tmpdir_repl(ser: Connection) -> Iterator[str]:
+    """
+    Like dev_tmpdir, but doesn't keep the device in fs mode during the test
+    run.
+    """
+    with upy_filesystem(ser) as fs:
+        name = "/test"
+        try:
+            fs.remove_recursive(name)
+        except OSError:  # Doesn't exist
+            pass
+
+        fs.mkdir(name, parents=True)
+
+    try:
+        yield name
+    finally:
+        with upy_filesystem(ser) as fs:
+            try:
+                fs.remove_recursive(name)
+            except OSError:
+                pass
