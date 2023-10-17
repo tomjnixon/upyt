@@ -77,7 +77,7 @@ def expect_endswith(conn: Connection, value: bytes) -> bytes:
 
 
 def interrupt_and_enter_repl(
-    conn: Connection, num_attempts: int = 2, timeout: float = 0.1
+    conn: Connection, num_attempts: int = 2,
 ) -> bytes:
     """
     Attempt to perform a keyboard interrupt to get to a REPL.
@@ -88,49 +88,48 @@ def interrupt_and_enter_repl(
     ('>>>'), e.g.  KeyboardInterrupt exception trace-backs).
 
     Makes num_attempts attempts to interrupt the running process, waiting
-    timeout seconds between each attempt. Multiple attempts are necessary if,
+    conn.timeout seconds between each attempt. Multiple attempts are necessary if,
     for example, an exception handler also blocks.
     """
     # Flush any pending input (e.g. previous command outputs or prompts)
     unmatched_output = conn.read_buffered()
 
     # Attempt to reach a prompt follwing a keyboard interrupt
-    with conn.timeout_override(timeout):
-        for attempt in range(num_attempts):
-            conn.write(b"\x03")
+    for attempt in range(num_attempts):
+        conn.write(b"\x03")
 
-            # Wait for the first hint hint of a prompt
-            prompt = b"\r\n>>> "
-            try:
-                unmatched_output += expect_endswith(conn, prompt)[: -len(prompt)]
-            except MicroPythonReplError as e:
-                # No sign of a prompt, try interrupting again as the exception
-                # handler may need interrupting
-                unmatched_output += e.args[0]
-                continue
+        # Wait for the first hint hint of a prompt
+        prompt = b"\r\n>>> "
+        try:
+            unmatched_output += expect_endswith(conn, prompt)[: -len(prompt)]
+        except MicroPythonReplError as e:
+            # No sign of a prompt, try interrupting again as the exception
+            # handler may need interrupting
+            unmatched_output += e.args[0]
+            continue
 
-            # To make sure what we're seeing is not just an old prompt hanging
-            # about in the buffer, produce some unique output
-            random_number = random.randint(0x10, 0xFFFFFF)
-            conn.write(b"0x%x\r" % random_number)
-            expected_response = (
-                b"0x%x\r\n"  # Echo
-                b"%d\r\n"  # Decimal representation
-                b">>> "  # Fresh prompt
-            ) % (random_number, random_number)
-            try:
-                unmatched_output += expect_endswith(conn, expected_response)[
-                    : -len(expected_response)
-                ]
-                # Success! We're in sync and sat waiting at a prompt!
-                return unmatched_output
-            except MicroPythonReplError as e:
-                # Fail: we didn't see our reply, lets try agian
-                unmatched_output += e.args[0]
-                continue
+        # To make sure what we're seeing is not just an old prompt hanging
+        # about in the buffer, produce some unique output
+        random_number = random.randint(0x10, 0xFFFFFF)
+        conn.write(b"0x%x\r" % random_number)
+        expected_response = (
+            b"0x%x\r\n"  # Echo
+            b"%d\r\n"  # Decimal representation
+            b">>> "  # Fresh prompt
+        ) % (random_number, random_number)
+        try:
+            unmatched_output += expect_endswith(conn, expected_response)[
+                : -len(expected_response)
+            ]
+            # Success! We're in sync and sat waiting at a prompt!
+            return unmatched_output
+        except MicroPythonReplError as e:
+            # Fail: we didn't see our reply, lets try agian
+            unmatched_output += e.args[0]
+            continue
 
-        # Ran out of retries
-        raise NoReplError(unmatched_output)
+    # Ran out of retries
+    raise NoReplError(unmatched_output)
 
 
 def paste_exec(conn: Connection, code: str, batch_size: int = 32) -> None:

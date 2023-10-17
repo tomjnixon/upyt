@@ -88,13 +88,13 @@ class TestInterruptAndEnterRepl:
 
         before = time.time()
 
-        ser.write(b"import time; time.sleep(3)\r")
+        ser.write(b"import time; time.sleep(30)\r")
 
         # XXX: Due to an unknown issue with the ACM driver/pyserial/something
         # else(?), if we do not wait for the echo to come back, the attempt to
         # write a ^C character in interrupt_and_enter_repl() will be blocked
         # until the end of the sleep for reasons unknown.
-        expect(ser, b"import time; time.sleep(3)\r\n")
+        expect(ser, b"import time; time.sleep(30)\r\n")
         
         time.sleep(0.1)  # Ensure started before we send ctrl+c
 
@@ -105,7 +105,7 @@ class TestInterruptAndEnterRepl:
 
         # Make sure our ^C worked (and that we didn't end up blocked waiting
         # for the printout
-        assert after - before < 0.5
+        assert after - before < ser.timeout * 1.5
 
         assert out == (
             b"Traceback (most recent call last):\r\n"
@@ -124,8 +124,8 @@ class TestInterruptAndEnterRepl:
         # until the end of the sleep for reasons unknown.
         ser.write(b"import time\r")
         expect(ser, b"import time\r\n")
-        ser.write(b"try: time.sleep(3)\r")
-        expect(ser, b">>> try: time.sleep(3)\r\n")
+        ser.write(b"try: time.sleep(30)\r")
+        expect(ser, b">>> try: time.sleep(30)\r\n")
         ser.write(b"except: print('stopped\\ndead')\r")
         expect(ser, b"... except: print('stopped\\ndead')\r\n")
         ser.write(b"\r")
@@ -139,7 +139,7 @@ class TestInterruptAndEnterRepl:
 
         # Make sure our ^C worked (and that we didn't end up blocked waiting
         # for the printout
-        assert after - before < 0.5
+        assert after - before < ser.timeout * 1.5
 
         assert out == (b"stopped\r\n" b"dead")
 
@@ -150,10 +150,10 @@ class TestInterruptAndEnterRepl:
 
         ser.write(b"import time\r")
         expect(ser, b"import time\r\n>>> ")
-        ser.write(b"try: time.sleep(3)\r")
-        expect(ser, b"try: time.sleep(3)\r\n... ")
-        ser.write(b"finally: time.sleep(2)\r")
-        expect(ser, b"finally: time.sleep(2)\r\n... ")
+        ser.write(b"try: time.sleep(30)\r")
+        expect(ser, b"try: time.sleep(30)\r\n... ")
+        ser.write(b"finally: time.sleep(20)\r")
+        expect(ser, b"finally: time.sleep(20)\r\n... ")
         ser.write(b"\r")
         expect(ser, b"\r\n")
         
@@ -171,7 +171,7 @@ class TestInterruptAndEnterRepl:
         # Make sure our ^C worked (and that we didn't end up blocked waiting
         # for the printout
         delta = after - before
-        assert delta < 0.5
+        assert delta < ser.timeout * 2.5
 
         assert out == (
             b"Traceback (most recent call last):\r\n"
