@@ -231,9 +231,9 @@ def handle_bracketed_paste(
             stdout.write("\n")
             stdout.write("".join(f"=== {line}\n" for line in content.splitlines()))
             stdout.flush()
-        except MicroPythonReplError:
+        except MicroPythonReplError as e:
             print(
-                f"\n{GREY}upyt error: Failed paste using paste mode.{RESET}",
+                f"\n{GREY}upyt error: Failed paste using paste mode ({e!r}).{RESET}",
                 file=stdout,
                 flush=True,
             )
