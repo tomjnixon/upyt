@@ -139,9 +139,9 @@ def paste_exec(conn: Connection, code: str, batch_size: int = 32) -> None:
     This function expects to be execued when the REPL is sat at a fresh prompt
     (e.g. following a call to :py:func:`interrupt_and_enter_repl`).
 
-    The only reason to use this function is to set/modify variables in the
-    users' scope within the REPL -- e.g. to implement a safe 'paste'
-    functionality in a serial terminal implementation.
+    The only reason to use this function is when you want to run some code
+    which the user has pasted and which may run for an indeterminate time which
+    the user can deal with waiting for or giving up on.
 
     In almost all other circumstances you should use :py:meth:`raw_paste_exec`
     to execute arbitrary code on the device.
@@ -186,10 +186,7 @@ def raw_mode(conn: Connection):
     try:
         yield
     finally:
-        conn.write(
-            b"\x04"  # (Ctrl+D)  End current code block (if any)
-            b"\x02"  # (Ctrl+B)  Exit raw mode
-        )
+        conn.write(b"\x02")  # (Ctrl+B)  Exit raw mode
         expect_endswith(conn, b"\r\n>>> ")
 
 
@@ -198,9 +195,6 @@ def raw_paste_exec(conn: Connection, code: str) -> tuple[str, str]:
     Execute the supplied code (via raw paste mode).
 
     Must be in raw mode (see :py:func:`raw_mode`) when calling this function.
-
-    Names defined by the executed code remain in scope until the surrounding
-    raw mode is exited.
 
     The supplied code must not contain, or print a 0x04 character (Ctrl+D)
     otherwise the raw paste mode protocol will become out-of-sync and undefined
@@ -212,6 +206,10 @@ def raw_paste_exec(conn: Connection, code: str) -> tuple[str, str]:
     The executed command must complete and have sent all of its output within
     the connection's timeout, otherwise an error will occur.
     """
+    code_utf8 = code.encode("utf-8")
+    if b"\x04" in code_utf8:
+        raise ValueError("Cannot eval strings containing ASCII 0x04 (ctrl+D)")
+    
     # Enter raw paste mode
     conn.write(b"\x05" b"A" b"\x01")  # (Ctrl+E / ENQ)  # (Ctrl+A)  # (Ctrl+A)
     response = conn.read(2)
@@ -220,10 +218,6 @@ def raw_paste_exec(conn: Connection, code: str) -> tuple[str, str]:
 
     window_size_increment = struct.unpack("<H", conn.read(2))[0]
     window_size = window_size_increment
-
-    code_utf8 = code.encode("utf-8")
-    if b"\x04" in code_utf8:
-        raise ValueError("Cannot eval strings containing ASCII 0x04 (ctrl+D)")
 
     # Send all of the code and wait for the window to re-open again
     #
