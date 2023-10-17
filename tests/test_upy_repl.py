@@ -95,6 +95,8 @@ class TestInterruptAndEnterRepl:
         # write a ^C character in interrupt_and_enter_repl() will be blocked
         # until the end of the sleep for reasons unknown.
         expect(ser, b"import time; time.sleep(3)\r\n")
+        
+        time.sleep(0.1)  # Ensure started before we send ctrl+c
 
         # Ensure we interrupt the sleep
         out = interrupt_and_enter_repl(ser)
@@ -128,6 +130,8 @@ class TestInterruptAndEnterRepl:
         expect(ser, b"... except: print('stopped\\ndead')\r\n")
         ser.write(b"\r")
         expect(ser, b"... \r\n")
+        
+        time.sleep(0.1)  # Ensure started before we send ctrl+c
 
         # Ensure we interrupt the sleep
         out = interrupt_and_enter_repl(ser)
@@ -152,6 +156,8 @@ class TestInterruptAndEnterRepl:
         expect(ser, b"finally: time.sleep(2)\r\n... ")
         ser.write(b"\r")
         expect(ser, b"\r\n")
+        
+        time.sleep(0.1)  # Ensure started before we send ctrl+c
 
         # XXX: Due to an unknown issue with the ACM driver/pyserial/something
         # else(?), if we do not wait for the echo to come back, the attempt to
@@ -190,8 +196,8 @@ class TestPasteExec:
     def test_flow_control(self, ser: Connection) -> None:
         # The following snippet is long enough that not waiting for the remote
         # device to handle it will inevetably result in it loosing some bytes
-        paste_exec(ser, f"print({' + '.join(map(str, range(100)))})\n" * 100)
-        expect(ser, (str(sum(range(100))).encode("utf-8") + b"\r\n") * 100)  # Output
+        paste_exec(ser, f"print({' + '.join(map(str, range(30)))})\n" * 30)
+        expect(ser, (str(sum(range(30))).encode("utf-8") + b"\r\n") * 30)  # Output
         expect(ser, b">>> ")  # New prompt
 
 

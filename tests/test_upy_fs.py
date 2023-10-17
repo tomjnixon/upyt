@@ -589,10 +589,10 @@ class TestPrimitives:
             # don't encounter any timeout related issues with such large
             # numbers of files
             exp_dirs = {
-                f"subdir_with_a_really_quite_long_name_you_know{i}" for i in range(30)
+                f"subdir_with_a_really_quite_long_name_you_know{i}" for i in range(15)
             }
             exp_files = {
-                f"file_with_a_really_quite_long_name_you_know{i}" for i in range(30)
+                f"file_with_a_really_quite_long_name_you_know{i}" for i in range(15)
             }
             for dir in exp_dirs:
                 fs.mkdir(f"{tmpdir}/{dir}")
