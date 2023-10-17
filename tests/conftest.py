@@ -8,18 +8,15 @@ from upyt.upy_fs import FilesystemAPI, upy_filesystem
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--board",
+        "--device",
         type=str,
-        help="""
-            Run live hardware tests on the board attached to the specified
-            serial port.
-        """,
+        help="Run live hardware tests on the attached device.",
     )
 
 
 @pytest.fixture(scope="session")
 def board(request):
-    return request.config.getoption("board", skip=True)
+    return request.config.getoption("device", skip=True)
 
 
 @pytest.fixture(scope="session")
