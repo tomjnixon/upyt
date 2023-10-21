@@ -77,7 +77,8 @@ def expect_endswith(conn: Connection, value: bytes) -> bytes:
 
 
 def interrupt_and_enter_repl(
-    conn: Connection, num_attempts: int = 2,
+    conn: Connection,
+    num_attempts: int = 2,
 ) -> bytes:
     """
     Attempt to perform a keyboard interrupt to get to a REPL.
@@ -209,7 +210,7 @@ def raw_paste_exec(conn: Connection, code: str) -> tuple[str, str]:
     code_utf8 = code.encode("utf-8")
     if b"\x04" in code_utf8:
         raise ValueError("Cannot eval strings containing ASCII 0x04 (ctrl+D)")
-    
+
     # Enter raw paste mode
     conn.write(b"\x05" b"A" b"\x01")  # (Ctrl+E / ENQ)  # (Ctrl+A)  # (Ctrl+A)
     response = conn.read(2)

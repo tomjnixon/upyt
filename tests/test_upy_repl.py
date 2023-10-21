@@ -95,7 +95,7 @@ class TestInterruptAndEnterRepl:
         # write a ^C character in interrupt_and_enter_repl() will be blocked
         # until the end of the sleep for reasons unknown.
         expect(ser, b"import time; time.sleep(30)\r\n")
-        
+
         time.sleep(0.1)  # Ensure started before we send ctrl+c
 
         # Ensure we interrupt the sleep
@@ -130,7 +130,7 @@ class TestInterruptAndEnterRepl:
         expect(ser, b"... except: print('stopped\\ndead')\r\n")
         ser.write(b"\r")
         expect(ser, b"... \r\n")
-        
+
         time.sleep(0.1)  # Ensure started before we send ctrl+c
 
         # Ensure we interrupt the sleep
@@ -156,7 +156,7 @@ class TestInterruptAndEnterRepl:
         expect(ser, b"finally: time.sleep(20)\r\n... ")
         ser.write(b"\r")
         expect(ser, b"\r\n")
-        
+
         time.sleep(0.1)  # Ensure started before we send ctrl+c
 
         # XXX: Due to an unknown issue with the ACM driver/pyserial/something
