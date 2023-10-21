@@ -21,8 +21,8 @@ existing tools, uPyT:
 
 * Correctly and efficiently handles transferring binary and text based data
   to/from the device.
-* Implements propper flow-control and batching enabling large, or numerous
-  files to be sent, receieved, deleted, enumerated etc. without running out of
+* Implements proper flow-control and batching enabling large, or numerous
+  files to be sent, received, deleted, enumerated etc. without running out of
   overflowing buffers or memory.
 * Implements an efficient file synchronisation mechanism which only transmits
   changes to the device.
@@ -140,7 +140,7 @@ and reset straight into the REPL.
 
 ### Tab completion
 
-Source [`upyt_complete.sh`](upyt_complete.sh) to enable commandline tab
+Source [`upyt_complete.sh`](upyt_complete.sh) to enable command line tab
 completion in BASH-compatible shells.
 
 *Warning:* completing on-device filenames requires uPyT to interrupt any
@@ -182,7 +182,7 @@ situations where two computers have synced to the same device.
 
 ### Command line tool friendly errors
 
-The commandline tools do not currently produce friendly errors when misused.
+The command line tools do not currently produce friendly errors when misused.
 Instead expect a bare exception: often an opaque "IOError".  There is no
 particular reason for this -- I'm just lazy.
 
@@ -192,3 +192,15 @@ particular reason for this -- I'm just lazy.
 The serial terminal feature (included the `--terminal` mode of the sync
 command) is not supported on Windows. Other commands should work -- though this
 is entirely untested.
+
+
+### WebREPL
+
+The implementation of WebREPL in MicroPython is, at the time of writing,
+extraordinarily slow (at least on ESP8266 and RP2 platforms). As a result, most
+commands are very slow to run (think tens of seconds).
+
+uPyT does not use the side channel commands for reading and writing files via
+WebREPL but instead drives the REPL directly, just as when connected via a
+serial port. This side channel is not yet stabilised and so I've not yet chosen
+to implement it.
