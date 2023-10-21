@@ -2,3 +2,4 @@ pytest
 mypy
 black
 types-pyserial
+websockets

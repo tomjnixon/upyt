@@ -50,6 +50,10 @@ NB: The `--device` argument comes *before* the subcommand.
 A custom baudrate may be specified by suffixing the device path with, e.g.,
 `:115200` where `115200` is your desired baudrate.
 
+You can connect to a device's WebREPL using
+`ws://ip-of-device:port/?password-here`. If the port is omitted, it defaults to
+8266. 
+
 To avoid having to type `--device ...` before every command, you can set the
 `UPYT_DEVICE` environment variable:
 
