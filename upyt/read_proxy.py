@@ -16,7 +16,7 @@ character) if they are waiting for further input.
 """
 
 
-from typing import cast, TextIO, Iterable, Iterator, Callable, AnyStr, BinaryIO, Any
+from typing import cast, TextIO, Iterable, Iterator, Callable, BinaryIO, Any
 
 from itertools import takewhile, islice
 
@@ -162,10 +162,10 @@ class ReadProxy(TextIO):
     def readable(self) -> bool:
         raise NotImplementedError()
 
-    def readline(self, limit: int = -1) -> AnyStr:
+    def readline(self, limit: int = -1) -> str:
         raise NotImplementedError()
 
-    def readlines(self, hint: int = -1) -> list[AnyStr]:
+    def readlines(self, hint: int = -1) -> list[str]:
         raise NotImplementedError()
 
     def seek(self, offset: int, whence: int = 0) -> int:
@@ -183,10 +183,10 @@ class ReadProxy(TextIO):
     def writable(self) -> bool:
         raise NotImplementedError()
 
-    def write(self, s: AnyStr) -> int:
+    def write(self, s: str) -> int:
         raise NotImplementedError()
 
-    def writelines(self, lines: Iterable[AnyStr]) -> None:
+    def writelines(self, lines: Iterable[str]) -> None:
         raise NotImplementedError()
 
     def __exit__(self, type, value, traceback) -> None:
